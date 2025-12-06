@@ -1,7 +1,7 @@
 package com.chillscape.controller;
 
-import com.chillscape.dao.SongDAO;
-import com.chillscape.model.Song;
+import com.chillscape.dao.SoundDAO;
+import com.chillscape.model.Sound;
 import com.google.gson.Gson;
 
 import javax.servlet.ServletException;
@@ -14,34 +14,34 @@ import java.io.PrintWriter;
 import java.util.List;
 import java.util.ResourceBundle;
 
-@WebServlet("/api/songs")
-public class SongServlet extends HttpServlet {
-    private SongDAO songDAO;
+@WebServlet("/api/sounds")
+public class SoundServlet extends HttpServlet {
+    private SoundDAO soundDAO;
     private Gson gson;
 
     @Override
     public void init() {
-        songDAO = new SongDAO();
+        soundDAO = new SoundDAO();
         gson = new Gson();
     }
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        // Thiết lập header trả về JSON và hỗ trợ tiếng Việt (UTF-8)
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
 
         ResourceBundle bundle = ResourceBundle.getBundle("messages");
+
         try {
-            List<Song> songs = songDAO.getAllSongs();
-            String json = gson.toJson(songs);
+            List<Sound> sounds = soundDAO.getAllSounds();
+            String json = gson.toJson(sounds);
 
             PrintWriter out = resp.getWriter();
             out.print(json);
             out.flush();
         } catch (Exception e) {
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            String errorMsg = bundle.getString("error.fetch.songs");
+            String errorMsg = bundle.getString("error.fetch.sounds");
             resp.getWriter().write("{\"error\": \"" + errorMsg + "\"}");
             e.printStackTrace();
         }
