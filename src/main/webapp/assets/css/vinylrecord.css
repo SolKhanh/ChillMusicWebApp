@@ -1,0 +1,108 @@
+:root {
+    /* ÐI?U CH?NH KÍCH THÝ?C T?I ÐÂY */
+    /* 80px là kích thý?c ð?p cho mini-player, nh?n v?n r? */
+    --size: 80px;
+}
+
+/* --- LOGIC ALBUM & Ð?A --- */
+
+.vn-album-wrapper {
+    position: relative;
+    width: var(--size);
+    height: var(--size);
+    flex-shrink: 0; /* Ð?m b?o không b? co méo */
+    /* T?o kho?ng tr?ng bên ph?i ð? ð?a trý?t ra không b? che */
+    margin-right: calc(var(--size) / 2);
+}
+
+/* 1. Ph?n B?a Album */
+.vn-cover {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10; /* Luôn n?m trên ð?a */
+    width: 100%;
+    height: 100%;
+    border-radius: 4px;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
+    background-color: #333; /* Màu n?n d? ph?ng */
+    overflow: hidden;
+}
+
+.vn-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Hi?u ?ng bóng kính trên b?a (thay th? ?nh texture c?) */
+.vn-cover::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+/* 2. Ph?n Ð?a Than */
+.vn-vinyl {
+    position: absolute;
+    top: 2px;     /* Th?t vào 1 chút so v?i b?a */
+    left: 2px;
+    z-index: 5;   /* N?m dý?i b?a */
+    width: calc(100% - 4px); /* Nh? hõn b?a 1 chút */
+    height: calc(100% - 4px);
+    border-radius: 50%;
+
+    /* T?O VÂN Ð?A CSS (Không dùng ?nh) */
+    background-color: #111;
+    background-image: repeating-radial-gradient(
+            #111 0,
+            #111 2px,
+            #222 3px,
+            #222 4px
+    );
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+
+    /* Animation: Slide ra ngoài + Xoay */
+    animation:
+            vn-slideOut 1s ease-out 0.5s forwards, /* Ch? 0.5s r?i trý?t ra */
+            vn-spin 4s linear infinite;            /* Xoay m?i m?i */
+}
+
+/* Ph?n nh?n ð?a ? gi?a */
+.vn-print {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 45%;  /* Tãng lên 45% (c? là 34%) ð? d? nh?n khi size nh? */
+    height: 45%;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid #111;
+}
+
+.vn-print img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background-color: #000;
+}
+
+/* Animation Keyframes */
+@keyframes vn-slideOut {
+    0% {
+        left: 2px; /* V? trí ban ð?u (sau lýng b?a) */
+    }
+    100% {
+        left: 50%; /* Trý?t ra m?t n?a (50% c?a wrapper) */
+    }
+}
+
+@keyframes vn-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

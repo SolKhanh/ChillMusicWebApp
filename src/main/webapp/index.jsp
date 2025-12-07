@@ -11,6 +11,7 @@
           integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA=="
           crossorigin="anonymous" referrerpolicy="no-referrer"/>
     <link rel="stylesheet" href="assets/css/index.css">
+    <link rel="stylesheet" href="assets/css/vinylrecord.css">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,7 +31,21 @@
 
 <div class="player-container">
     <div class="song-info">
-        <i class="fa-solid fa-music icon"></i>
+
+        <div class="vn-album-wrapper">
+
+            <div class="vn-cover">
+                <img src="https://resources.wimpmusic.com/images/e4b27d83/6d03/4d1d/bd1a/82abf8920455/1280x1280.jpg" alt="Cover">
+            </div>
+
+            <div class="vn-vinyl">
+                <div class="vn-print">
+                    <img src="http://assets.teamrock.com/image/14d29742-c6f7-43f6-bbe1-6bf7b3b34c6f?w=800" alt="Label">
+                </div>
+            </div>
+
+        </div>
+
         <div class="song-details">
             <div class="title">Nimue's Lullaby (Instrumental)</div>
             <div class="artist">idylla</div>
