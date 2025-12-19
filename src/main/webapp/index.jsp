@@ -20,41 +20,43 @@
 
 </head>
 <body>
-
-<div class="background-container">
-    <img src="assets/img/background.jpg" alt="background"/>
+<!-- id="background-container" để app.js tìm thấy -->
+<div id="background-container" class="background-container"
+     style="background-image: url('${pageContext.request.contextPath}/assets/img/background.jpg');">
 </div>
 
 <div class="main-container">
     <div id="clock" class="clock"></div>
 </div>
-
+<div id="ambient-sounds-panel" class="ambient-panel">
+    <!-- Nội dung sẽ được app.js tự động tạo ra -->
+</div>
 <div class="player-container">
     <div class="song-info">
 
         <div class="vn-album-wrapper">
 
             <div class="vn-cover">
-                <img src="https://resources.wimpmusic.com/images/e4b27d83/6d03/4d1d/bd1a/82abf8920455/1280x1280.jpg" alt="Cover">
+                <img src="${pageContext.request.contextPath}/assets/img/cover/cover.jpg" alt="Cover">
             </div>
 
             <div class="vn-vinyl">
                 <div class="vn-print">
-                    <img src="https://resources.wimpmusic.com/images/e4b27d83/6d03/4d1d/bd1a/82abf8920455/1280x1280.jpg" alt="Label">
+                    <img src="${pageContext.request.contextPath}/assets/img/cover/cover.jpg" alt="Label">
                 </div>
             </div>
 
         </div>
 
         <div class="song-details">
-            <div class="title">Nimue's Lullaby (Instrumental)</div>
-            <div class="artist">idylla</div>
+            <div class="title">Loading...</div>
+            <div class="artist">...</div>
         </div>
     </div>
 
     <div class="player-controls">
         <button class="prev-btn"><i class="fas fa-backward-step"></i></button>
-        <button class="play-pause-btn"><i class="fas fa-pause"></i></button>
+        <button class="play-pause-btn"><i class="fas fa-play"></i></button>
         <button class="next-btn"><i class="fas fa-forward-step"></i></button>
     </div>
 
@@ -81,8 +83,9 @@
 
     setInterval(updateClock, 1000);
     updateClock();
+    window.CURRENT_CONTEXT = '${pageContext.request.contextPath}';
 </script>
-
+<script src="${pageContext.request.contextPath}/assets/js/app.js"></script>
 
 </body>
 </html>
