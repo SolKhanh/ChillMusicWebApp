@@ -40,7 +40,7 @@
 
             <div class="vn-vinyl">
                 <div class="vn-print">
-                    <img src="http://assets.teamrock.com/image/14d29742-c6f7-43f6-bbe1-6bf7b3b34c6f?w=800" alt="Label">
+                    <img src="https://resources.wimpmusic.com/images/e4b27d83/6d03/4d1d/bd1a/82abf8920455/1280x1280.jpg" alt="Label">
                 </div>
             </div>
 
