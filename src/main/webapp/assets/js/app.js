@@ -65,6 +65,13 @@ const App = {
         if (this.state.isPlaying) {
             this.state.mainAudio.play();
         }
+
+        const currTimeEl = document.querySelector('.current-time');
+        const durationEl = document.querySelector('.duration');
+        const sliderEl = document.querySelector('.progress-slider');
+        if (currTimeEl) currTimeEl.innerText = "0:00";
+        if (durationEl) durationEl.innerText = this.formatTime(song.duration);
+        if (sliderEl) sliderEl.value = 0;
     },
 
     updateSongUI() {
@@ -156,6 +163,35 @@ const App = {
         if (bgContainer) {
             bgContainer.style.backgroundImage = `url('\${this.config.backgrounds[this.state.currentBgIndex]}')`;
         }
+    },
+
+    formatTime(seconds) {
+        if (isNaN(seconds)) return "0:00";
+        const minutes = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+    },
+
+    setupProgressBar() {
+        const mainAudio = this.state.mainAudio;
+        const slider = document.getElementById('progress-slider');
+        const currentTimeEl = document.querySelector('.current-time');
+        const durationEl = document.querySelector('.duration');
+
+        if (!slider || !currentTimeEl || !durationEl) return;
+
+        mainAudio.addEventListener('loadedmetadata', () => {
+            slider.max = mainAudio.duration;
+            durationEl.innerText = this.formatTime(mainAudio.duration);
+        });
+
+        mainAudio.addEventListener('timeupdate', () => {
+            slider.value = mainAudio.currentTime;
+            currentTimeEl.innerText = this.formatTime(mainAudio.currentTime);
+        });
+
+        slider.addEventListener('input', (e) => mainAudio.currentTime = e.target.value);
+
     },
 
     handleEvents() {

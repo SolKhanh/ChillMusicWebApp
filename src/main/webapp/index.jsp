@@ -22,7 +22,7 @@
 <body>
 <!-- id="background-container" để app.js tìm thấy -->
 <div id="background-container" class="background-container"
-     style="background-image: url('${pageContext.request.contextPath}/assets/img/background.jpg');">
+     style="background-image: url('${pageContext.request.contextPath}/assets/img/cover/background.jpg');">
 </div>
 
 <div class="main-container">
@@ -51,6 +51,16 @@
         <div class="song-details">
             <div class="title">Loading...</div>
             <div class="artist">...</div>
+        </div>
+    </div>
+
+    <div class="progress-area">
+        <div class="progress-bar">
+            <input type="range" id="progress-slider" min="0" value="0">
+        </div>
+        <div class="timer">
+            <span class="current-time">0:00</span>
+            <span class="duration">--:--</span>
         </div>
     </div>
 
