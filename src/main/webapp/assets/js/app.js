@@ -28,6 +28,8 @@ const App = {
         this.setupMainPlayer();
         this.handleEvents();
 
+        this.setupProgressBar();
+
         // Cập nhật giao diện ban đầu
         if (this.state.songs.length > 0) {
             this.updateSongUI();
@@ -68,9 +70,9 @@ const App = {
 
         const currTimeEl = document.querySelector('.current-time');
         const durationEl = document.querySelector('.duration');
-        const sliderEl = document.querySelector('.progress-slider');
+        const sliderEl = document.getElementById('progress-slider');
         if (currTimeEl) currTimeEl.innerText = "0:00";
-        if (durationEl) durationEl.innerText = this.formatTime(song.duration);
+        if (durationEl) durationEl.innerText = "--:--";
         if (sliderEl) sliderEl.value = 0;
     },
 
@@ -181,8 +183,10 @@ const App = {
         if (!slider || !currentTimeEl || !durationEl) return;
 
         mainAudio.addEventListener('loadedmetadata', () => {
-            slider.max = mainAudio.duration;
-            durationEl.innerText = this.formatTime(mainAudio.duration);
+            if(isFinite(mainAudio.duration)) {
+                slider.max = mainAudio.duration;
+                durationEl.innerText = this.formatTime(mainAudio.duration);
+            }
         });
 
         mainAudio.addEventListener('timeupdate', () => {
