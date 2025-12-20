@@ -43,64 +43,109 @@ body, html {
 
 .clock {
     font-family: "Science Gothic", sans-serif;
-    font-optical-sizing: auto;
-    font-weight: 400;
-    font-style: normal;
-    font-variation-settings: "slnt" 0,
-    "wdth" 100,
-    "CTRS" 0;
     font-size: 12vw;
     letter-spacing: -2px;
     text-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
 }
 
-
+/* --- PLAYER CONTAINER --- */
 .player-container {
     position: fixed;
     bottom: 30px;
     left: 50%;
     transform: translateX(-50%);
     width: 90%;
-    max-width: 600px;
+    max-width: 800px; /* Tăng độ rộng để bố cục thoáng hơn */
     background-color: var(--player-bg-color);
     border: 1px solid var(--player-border-color);
     border-radius: 12px;
     padding: 15px 25px;
+
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: wrap; /* Cho phép xuống dòng (để progress bar xuống dưới) */
     align-items: center;
     justify-content: space-between;
+
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     z-index: 10;
 }
 
-.song-info {
+/* --- 1. VOLUME (BÊN TRÁI) --- */
+.player-options {
+    order: 2;
     display: flex;
     align-items: center;
-    gap: 15px;
-    flex-shrink: 0;
-}
-
-.song-info .icon {
-    font-size: 24px;
+    justify-content: flex-end;
+    flex: 1;
+    min-width: 150px;
+    font-size: 18px;
     color: #A0A0A0;
 }
 
-.song-details .title {
-    font-weight: 500;
+.volume-container {
+    display: flex;
+    align-items: center;
+    position: relative;
+    /*padding: 10px 15px 10px 0; !* Đệm bên phải để hover dễ hơn *!*/
 }
 
-.song-details .artist {
-    font-size: 0.8rem;
-    color: #A0A0A0;
+#volume-icon {
+    cursor: pointer;
+    font-size: 18px;
+    color: #fff;
+    width: 25px;
+    text-align: center;
+    transition: color 0.3s;
+    z-index: 2;
 }
 
+#volume-icon:hover {
+    color: #1db954;
+}
+
+#volume-slider {
+    width: 0;
+    opacity: 0;
+    visibility: hidden;
+    margin-left: 0;
+    transform-origin: left;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    height: 4px;
+    background: #fff;
+    border-radius: 2px;
+    cursor: pointer;
+    -webkit-appearance: none;
+}
+
+/* Hover: input nằm sau icon trong HTML -> bung ra bên phải icon -> Hợp lý cho góc trái màn hình */
+.volume-container:hover #volume-slider {
+    width: 80px;
+    opacity: 1;
+    visibility: visible;
+    margin-left: 10px;
+}
+
+#volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 12px;
+    width: 12px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+
+/* --- 2. CONTROLS (Ở GIỮA) --- */
+/* Trong HTML nó đứng thứ 3, dùng order: 2 để nằm giữa */
 .player-controls {
+    order: 3;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 20px;
+    flex: 0.5;
 }
 
 .player-controls button {
@@ -120,27 +165,130 @@ body, html {
     font-size: 28px;
 }
 
-.player-options {
+/* --- 3. SONG INFO (BÊN PHẢI) --- */
+/* Trong HTML nó đứng thứ 1, dùng order: 3 để đẩy về cuối bên phải */
+.song-info {
+    order: 1;
     display: flex;
     align-items: center;
-    gap: 20px;
-    font-size: 18px;
-    color: #A0A0A0;
+    justify-content: flex-start; /* Căn toàn bộ khối sang phải */
+
+    gap: 15px;
+    flex: 1;
+
+    /* QUAN TRỌNG: Giới hạn chiều rộng tối đa của khối thông tin */
+    /* Để nó không chiếm hết chỗ của nút điều khiển ở giữa */
+    /*max-width: 50%;*/
+    min-width: 0; /* Cần thiết cho Firefox/Flexbox để text wrap hoạt động */
 }
 
-.player-options i {
+/* Wrapper chứa text (Tên bài + Ca sĩ) */
+.song-details {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end; /* Căn chữ sang phải */
+    justify-content: center;
+
+    /* QUAN TRỌNG: Xử lý khi text quá dài */
+    flex: 1;       /* Chiếm không gian còn lại */
+    min-width: 0;  /* "Phép thuật": Cho phép container co lại nhỏ hơn nội dung text */
+    overflow: hidden; /* Ẩn phần thừa */
+}
+
+.song-details .title,
+.song-details .artist {
+    white-space: nowrap;      /* Không xuống dòng */
+    overflow: hidden;         /* Cắt phần thừa */
+    text-overflow: ellipsis;  /* Thêm dấu "..." */
+    width: 100%;              /* Đảm bảo text nhận giới hạn chiều rộng */
+    text-align: right;        /* Căn lề phải text */
+    display: block;
+}
+
+.song-details .title {
+    font-weight: bold;
+    margin-bottom: 4px;
+    font-size: 1rem;
+}
+
+.song-details .artist {
+    font-size: 0.85em;
+    opacity: 0.8;
+}
+
+.vn-cover, .vn-vinyl {
+    width: 100%;
+    height: 100%;
+}
+.vn-cover img, .vn-vinyl img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* --- 4. PROGRESS BAR (DƯỚI CÙNG) --- */
+.progress-area {
+    order: 4; /* Luôn nằm cuối cùng */
+    flex-basis: 100%;
+    width: 100%;
+    margin-top: 15px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 6px;
+    background: #4a4a4a;
+    border-radius: 5px;
     cursor: pointer;
+    position: relative;
 }
 
-.montez-regular {
-    font-family: "Montez", cursive;
-    font-weight: 400;
-    font-style: normal;
+.progress-bar input {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    outline: none;
+    border-radius: 5px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    cursor: pointer;
+    margin: 0;
 }
 
+.progress-bar input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 14px;
+    width: 14px;
+    background: #ffffff;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+    transition: transform 0.1s ease;
+    margin-top: -4px;
+}
+
+.progress-bar input::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    background: #1db954;
+}
+
+.timer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #A0A0A0;
+    margin-top: 8px;
+    font-weight: 500;
+    font-family: monospace;
+}
+
+/* --- AMBIENT SOUNDS --- */
 .ambient-panel {
     position: fixed;
-    right: 20px; /* Cố định bên phải màn hình */
+    right: 20px;
     top: 50%;
     transform: translateY(-50%);
     background: rgba(0, 0, 0, 0.6);
@@ -178,7 +326,6 @@ body, html {
     margin-top: 5px;
 }
 
-/* Tùy chỉnh thêm để đảm bảo nút kéo trên các trình duyệt */
 .ambient-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     height: 16px;
@@ -196,102 +343,4 @@ body, html {
 
 #change-bg-btn:active {
     transform: scale(0.9);
-}
-
-.song-details {
-    width: 250px; /* Bạn có thể tăng giảm số này tùy ý */
-    text-align: left; /* Hoặc center tùy sở thích */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    overflow: hidden; /* Quan trọng: ẩn phần thừa */
-}
-
-.song-details .title,
-.song-details .artist {
-    white-space: nowrap; /* Không xuống dòng */
-    overflow: hidden; /* Ẩn phần chữ tràn ra */
-    text-overflow: ellipsis; /* Thêm dấu "..." ở cuối */
-    max-width: 100%;
-    display: block;
-}
-
-.song-details .title {
-    font-weight: bold;
-    margin-bottom: 4px;
-}
-
-.song-details .artist {
-    font-size: 0.85em;
-    opacity: 0.8;
-}
-
-
-.progress-area {
-    width: 100%;
-    margin-top: 15px; /* Tạo khoảng cách với hàng nút bấm bên trên */
-    padding: 0 5px;
-    order: 3; /* Đảm bảo nó luôn nằm cuối cùng nếu dùng flex-wrap */
-    flex-basis: 100%; /* Chiếm trọn 1 dòng */
-}
-
-.progress-bar {
-    width: 100%;
-    height: 6px;
-    background: #4a4a4a; /* Màu nền của thanh khi chưa chạy */
-    border-radius: 5px;
-    cursor: pointer;
-    position: relative;
-}
-
-.progress-bar input {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 100%;
-    height: 100%;
-    background: transparent;
-    outline: none;
-    border-radius: 5px;
-    position: absolute;
-    top: 0;
-    left: 0;
-    cursor: pointer;
-    margin: 0; /* Quan trọng để không bị lệch */
-}
-
-.progress-bar input::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    height: 14px;
-    width: 14px;
-    background: #ffffff;
-    border-radius: 50%;
-    cursor: pointer;
-    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
-    transition: transform 0.1s ease;
-    margin-top: -4px; /* Căn giữa nút so với thanh track (14px - 6px)/2 * -1 */
-}
-
-.progress-bar input::-webkit-slider-thumb:hover {
-    transform: scale(1.2);
-    background: #1db954;
-}
-
-.progress-bar input::-moz-range-thumb {
-    height: 14px;
-    width: 14px;
-    background: #ffffff;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
-}
-
-.timer {
-    display: flex;
-    justify-content: space-between;
-    font-size: 11px;
-    color: #A0A0A0;
-    margin-top: 8px;
-    font-weight: 500;
-    font-family: monospace;
 }

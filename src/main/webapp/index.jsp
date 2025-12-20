@@ -32,26 +32,37 @@
     <!-- Nội dung sẽ được app.js tự động tạo ra -->
 </div>
 <div class="player-container">
+
     <div class="song-info">
 
         <div class="vn-album-wrapper">
-
             <div class="vn-cover">
                 <img src="${pageContext.request.contextPath}/assets/img/cover/cover.jpg" alt="Cover">
             </div>
-
             <div class="vn-vinyl">
                 <div class="vn-print">
                     <img src="${pageContext.request.contextPath}/assets/img/cover/cover.jpg" alt="Label">
                 </div>
             </div>
-
         </div>
 
         <div class="song-details">
             <div class="title">Loading...</div>
             <div class="artist">...</div>
         </div>
+    </div>
+
+    <div class="player-options">
+        <div class="volume-container">
+            <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="1">
+            <i class="fa-solid fa-volume-high" id="volume-icon"></i>
+        </div>
+    </div>
+
+    <div class="player-controls">
+        <button class="prev-btn"><i class="fas fa-backward-step"></i></button>
+        <button class="play-pause-btn"><i class="fas fa-play"></i></button>
+        <button class="next-btn"><i class="fas fa-forward-step"></i></button>
     </div>
 
     <div class="progress-area">
@@ -64,16 +75,6 @@
         </div>
     </div>
 
-    <div class="player-controls">
-        <button class="prev-btn"><i class="fas fa-backward-step"></i></button>
-        <button class="play-pause-btn"><i class="fas fa-play"></i></button>
-        <button class="next-btn"><i class="fas fa-forward-step"></i></button>
-    </div>
-
-    <div class="player-options">
-        <i class="fa-solid fa-volume-high"></i>
-        <i class="fa-regular fa-image"></i>
-    </div>
 </div>
 
 <script>

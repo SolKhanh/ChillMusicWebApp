@@ -29,6 +29,7 @@ const App = {
         this.handleEvents();
 
         this.setupProgressBar();
+        this.setupVolumeControl();
 
         // Cập nhật giao diện ban đầu
         if (this.state.songs.length > 0) {
@@ -183,7 +184,7 @@ const App = {
         if (!slider || !currentTimeEl || !durationEl) return;
 
         mainAudio.addEventListener('loadedmetadata', () => {
-            if(isFinite(mainAudio.duration)) {
+            if (isFinite(mainAudio.duration)) {
                 slider.max = mainAudio.duration;
                 durationEl.innerText = this.formatTime(mainAudio.duration);
             }
@@ -196,6 +197,61 @@ const App = {
 
         slider.addEventListener('input', (e) => mainAudio.currentTime = e.target.value);
 
+    },
+
+    setupVolumeControl() {
+        const slider = document.getElementById('volume-slider');
+        const volumeIcon = document.getElementById('volume-icon');
+        const mainAudio = this.state.mainAudio;
+
+        if (!slider || !volumeIcon) return;
+
+        slider.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            mainAudio.volume = val;
+            this.updateVolumeIcon(val);
+        });
+
+        volumeIcon.addEventListener('click', () => {
+            if (mainAudio.volume > 0) {
+                this.savedVolume = mainAudio.volume;
+                mainAudio.volume = 0;
+                slider.value = 0;
+            } else {
+                mainAudio.volume = this.savedVolume || 0.5;
+                slider.value = mainAudio.volume;
+            }
+            this.updateVolumeIcon(mainAudio.volume);
+        })
+        document.addEventListener('keydown', (e) => {
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+            let currVol = mainAudio.volume;
+            let step = 0.05;
+
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                currVol = Math.min(1, currVol + step);
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                currVol = Math.max(0, currVol - step);
+            } else return;
+            mainAudio.volume = currVol;
+            slider.value = currVol;
+            this.updateVolumeIcon(currVol);
+        });
+    },
+
+
+    updateVolumeIcon(vol) {
+        const icon = document.getElementById('volume-icon');
+        icon.className = 'fa-solid';
+        if (vol === 0) {
+            icon.classList.add('fa-volume-mute');
+        } else if (vol < 0.5) {
+            icon.classList.add('fa-volume-low');
+        } else {
+            icon.classList.add('fa-volume-high');
+        }
     },
 
     handleEvents() {
