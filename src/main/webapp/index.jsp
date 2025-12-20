@@ -78,22 +78,6 @@
 </div>
 
 <script>
-    function updateClock() {
-        const now = new Date();
-        let hours = now.getHours();
-        const minutes = now.getMinutes().toString().padStart(2, '0');
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-
-        hours = hours % 12;
-        hours = hours ? hours : 12; // the hour '0' should be '12'
-
-        const timeString = `\${hours}:\${minutes} <span style="font-size: 0.5em; vertical-align: middle;">\${ampm}</span>`;
-        console.log("Thời gian hiện tại đang được tạo:", timeString);
-        document.getElementById('clock').innerHTML = timeString;
-    }
-
-    setInterval(updateClock, 1000);
-    updateClock();
     window.CURRENT_CONTEXT = '${pageContext.request.contextPath}';
 </script>
 <script src="${pageContext.request.contextPath}/assets/js/app.js"></script>

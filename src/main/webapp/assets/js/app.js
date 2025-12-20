@@ -24,6 +24,7 @@ const App = {
         await this.loadData();
 
         // Khởi tạo các thành phần
+        this.startClock();
         this.renderAmbientControls();
         this.setupMainPlayer();
         this.handleEvents();
@@ -48,6 +49,28 @@ const App = {
         } catch (error) {
             console.error("Lỗi lấy dữ liệu:", error);
         }
+    },
+
+    startClock() {
+        const update = () => {
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+
+            const timeString = `${hours}:${minutes} <span style="font-size: 0.5em; vertical-align: middle;">${ampm}</span>`;
+
+            const clockElement = document.getElementById('clock');
+            if (clockElement) {
+                clockElement.innerHTML = timeString;
+            }
+        };
+
+        setInterval(update, 1000);
+        update();
     },
 
     setupMainPlayer() {
