@@ -3,9 +3,9 @@ const App = {
         apiSongs: 'api/songs',
         apiSounds: 'api/sounds',
         backgrounds: [
-            'assets/img/background.jpg',
-            'assets/img/background2.jpg',
-            'assets/img/background3.jpg'
+            'assets/img/cover/background.jpg',
+            'assets/img/cover/background2.jpg',
+            'assets/img/cover/background3.jpg'
         ],
         defaultCover: 'assets/img/cover/cover.jpg'
     },
@@ -15,12 +15,21 @@ const App = {
         currentSongIndex: 0,
         currentBgIndex: 0,
         mainAudio: new Audio(),
+
+        backgrounds: [],
+        bgIntervalTime: 10000,
+        bgTimerId: null,
+
         ambientAudios: {},
         isPlaying: false
     },
 
     async init() {
         console.log("App initializing...");
+
+        // Sao chép danh sách background từ config sang state để dễ quản lý
+        this.state.backgrounds = [...this.config.backgrounds];
+
         await this.loadData();
 
         // Khởi tạo các thành phần
@@ -28,9 +37,14 @@ const App = {
         this.renderAmbientControls();
         this.setupMainPlayer();
         this.handleEvents();
+        this.setupSidebarEvents();
+        this.setupSettingsLogic();
 
         this.setupProgressBar();
         this.setupVolumeControl();
+
+        // Bắt đầu slideshow nền ngay khi vào trang
+        this.startBackgroundSlideshow();
 
         // Cập nhật giao diện ban đầu
         if (this.state.songs.length > 0) {
@@ -44,10 +58,13 @@ const App = {
                 fetch(this.config.apiSongs),
                 fetch(this.config.apiSounds)
             ]);
-            this.state.songs = await songsRes.json();
-            this.state.sounds = await soundsRes.json();
+            // Kiểm tra phản hồi trước khi parse JSON (tránh lỗi nếu API chết)
+            if(songsRes.ok) this.state.songs = await songsRes.json();
+            if(soundsRes.ok) this.state.sounds = await soundsRes.json();
         } catch (error) {
             console.error("Lỗi lấy dữ liệu:", error);
+            // Dữ liệu mẫu fallback nếu API lỗi (để test giao diện)
+            this.state.songs = [];
         }
     },
 
@@ -62,13 +79,9 @@ const App = {
             hours = hours ? hours : 12;
 
             const timeString = `${hours}:${minutes} <span style="font-size: 0.5em; vertical-align: middle;">${ampm}</span>`;
-
             const clockElement = document.getElementById('clock');
-            if (clockElement) {
-                clockElement.innerHTML = timeString;
-            }
+            if (clockElement) clockElement.innerHTML = timeString;
         };
-
         setInterval(update, 1000);
         update();
     },
@@ -77,7 +90,6 @@ const App = {
         if (this.state.songs.length > 0) {
             this.loadSong(0);
         }
-
         // Tự động chuyển bài khi kết thúc
         this.state.mainAudio.onended = () => this.nextSong();
     },
@@ -85,16 +97,24 @@ const App = {
     loadSong(index) {
         this.state.currentSongIndex = index;
         const song = this.state.songs[index];
+        if(!song) return;
+
         this.state.mainAudio.src = song.filePath;
         this.updateSongUI();
 
+        // Cập nhật trạng thái nút Play/Pause
+        const playBtn = document.querySelector('.play-pause-btn');
         if (this.state.isPlaying) {
             this.state.mainAudio.play();
+            if(playBtn) playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+        } else {
+            if(playBtn) playBtn.innerHTML = '<i class="fas fa-play"></i>';
         }
 
         const currTimeEl = document.querySelector('.current-time');
         const durationEl = document.querySelector('.duration');
         const sliderEl = document.getElementById('progress-slider');
+
         if (currTimeEl) currTimeEl.innerText = "0:00";
         if (durationEl) durationEl.innerText = "--:--";
         if (sliderEl) sliderEl.value = 0;
@@ -113,20 +133,16 @@ const App = {
         if (artistEl) artistEl.innerText = song.artist;
 
         const ctx = window.CURRENT_CONTEXT || '';
-
-        // Lấy đường dẫn ảnh từ DB (ưu tiên coverImage, fallback sang cover)
         const rawCoverPath = song.coverImage || song.cover;
         let coverSrc = "";
 
-        // Kiểm tra tính hợp lệ của ảnh từ DB
-        if (rawCoverPath && rawCoverPath.trim() !== "" && rawCoverPath !== "null" && rawCoverPath !== "undefined") {
+        if (rawCoverPath && rawCoverPath.trim() !== "" && rawCoverPath !== "null") {
             if (rawCoverPath.startsWith('http')) {
                 coverSrc = rawCoverPath;
             } else {
                 coverSrc = `${ctx}/${rawCoverPath}`.replace('//', '/');
             }
         } else {
-            // Dùng ảnh mặc định nếu không có dữ liệu trong DB
             coverSrc = `${ctx}/${this.config.defaultCover}`.replace('//', '/');
         }
 
@@ -137,33 +153,23 @@ const App = {
     renderAmbientControls() {
         const container = document.getElementById('ambient-sounds-panel');
         if (!container) return;
-
-        // Nếu context chưa được định nghĩa (chạy local html), dùng chuỗi rỗng
         const ctx = window.CURRENT_CONTEXT || '';
-
         container.innerHTML = '';
 
-        console.log("--- Bắt đầu hiển thị Sounds ---");
         this.state.sounds.forEach(sound => {
-            console.log(`Sound: ${sound.name} | Path gốc: ${sound.filePath}`);
-
-            // thêm đường dẫn tuyệt đối
             const fullPath = `${ctx}/${sound.filePath}`.replace('//', '/');
-
             const audio = new Audio(fullPath);
             audio.loop = true;
             audio.volume = 0;
             this.state.ambientAudios[sound.id] = audio;
 
             const iconClass = sound.iconClass || 'fa-music';
-
             const control = document.createElement('div');
             control.className = 'ambient-control';
-
             control.innerHTML = `
                 <div class="ambient-info" style="color: white; text-shadow: 1px 1px 2px black;">
                     <i class="fa-solid ${iconClass}" style="width: 25px; text-align: center;"></i>
-                    <span>${sound.name || 'Không tên'}</span>
+                    <span>${sound.name || 'Sound'}</span>
                 </div>
                 <input type="range" class="ambient-slider" 
                        min="0" max="1" step="0.01" value="0" 
@@ -181,14 +187,6 @@ const App = {
     prevSong() {
         let newIndex = (this.state.currentSongIndex - 1 + this.state.songs.length) % this.state.songs.length;
         this.loadSong(newIndex);
-    },
-
-    changeBackground() {
-        this.state.currentBgIndex = (this.state.currentBgIndex + 1) % this.config.backgrounds.length;
-        const bgContainer = document.getElementById('background-container');
-        if (bgContainer) {
-            bgContainer.style.backgroundImage = `url('\${this.config.backgrounds[this.state.currentBgIndex]}')`;
-        }
     },
 
     formatTime(seconds) {
@@ -214,71 +212,160 @@ const App = {
         });
 
         mainAudio.addEventListener('timeupdate', () => {
+            // Chỉ update slider nếu người dùng không đang kéo nó
+            // (Thực tế nên thêm cờ isDragging, nhưng đơn giản thì để vậy cũng ổn)
             slider.value = mainAudio.currentTime;
             currentTimeEl.innerText = this.formatTime(mainAudio.currentTime);
         });
 
         slider.addEventListener('input', (e) => mainAudio.currentTime = e.target.value);
-
     },
 
     setupVolumeControl() {
         const slider = document.getElementById('volume-slider');
         const volumeIcon = document.getElementById('volume-icon');
         const mainAudio = this.state.mainAudio;
-
         if (!slider || !volumeIcon) return;
 
-        slider.addEventListener('input', (e) => {
-            const val = parseFloat(e.target.value);
+        const setVolume = (val) => {
             mainAudio.volume = val;
+            slider.value = val;
             this.updateVolumeIcon(val);
-        });
+        };
+
+        slider.addEventListener('input', (e) => setVolume(parseFloat(e.target.value)));
 
         volumeIcon.addEventListener('click', () => {
             if (mainAudio.volume > 0) {
                 this.savedVolume = mainAudio.volume;
-                mainAudio.volume = 0;
-                slider.value = 0;
+                setVolume(0);
             } else {
-                mainAudio.volume = this.savedVolume || 0.5;
-                slider.value = mainAudio.volume;
+                setVolume(this.savedVolume || 0.5);
             }
-            this.updateVolumeIcon(mainAudio.volume);
-        })
+        });
+
+        // Điều khiển bằng phím mũi tên
         document.addEventListener('keydown', (e) => {
             if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
             let currVol = mainAudio.volume;
-            let step = 0.05;
-
-            if (e.key === 'ArrowUp') {
+            if (e.key === 'ArrowRight') {
                 e.preventDefault();
-                currVol = Math.min(1, currVol + step);
-            } else if (e.key === 'ArrowDown') {
+                setVolume(Math.min(1, currVol + 0.05));
+            } else if (e.key === 'ArrowLeft') {
                 e.preventDefault();
-                currVol = Math.max(0, currVol - step);
-            } else return;
-            mainAudio.volume = currVol;
-            slider.value = currVol;
-            this.updateVolumeIcon(currVol);
+                setVolume(Math.max(0, currVol - 0.05));
+            }
         });
     },
-
 
     updateVolumeIcon(vol) {
         const icon = document.getElementById('volume-icon');
         icon.className = 'fa-solid';
-        if (vol === 0) {
-            icon.classList.add('fa-volume-mute');
-        } else if (vol < 0.5) {
-            icon.classList.add('fa-volume-low');
-        } else {
-            icon.classList.add('fa-volume-high');
+        if (vol === 0) icon.classList.add('fa-volume-mute');
+        else if (vol < 0.5) icon.classList.add('fa-volume-low');
+        else icon.classList.add('fa-volume-high');
+    },
+
+    setupSidebarEvents() {
+        const menuBtn = document.querySelector('.menu-container');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        const closeBtn = document.getElementById('close-sidebar-btn');
+
+        const toggleSidebar = (show) => {
+            if (show) {
+                sidebar.classList.add('active');
+                overlay.classList.add('active');
+            } else {
+                sidebar.classList.remove('active');
+                overlay.classList.remove('active');
+            }
+        };
+
+        if (menuBtn) menuBtn.addEventListener('click', () => toggleSidebar(true));
+        if (closeBtn) closeBtn.addEventListener('click', () => toggleSidebar(false));
+        if (overlay) overlay.addEventListener('click', () => toggleSidebar(false));
+    },
+
+    // --- LOGIC CÀI ĐẶT (SETTINGS) ---
+    setupSettingsLogic() {
+        const checkbox = document.getElementById('use-preset-checkbox');
+        const presetOptions = document.getElementById('preset-options');
+        const customInputContainer = document.getElementById('custom-input-container');
+        const radioButtons = document.querySelectorAll('input[name="bg-time"]');
+        const customApplyBtn = document.getElementById('apply-custom-btn');
+        const customInput = document.getElementById('custom-time-input');
+
+        if (checkbox) {
+            checkbox.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    presetOptions.classList.remove('hidden');
+                    customInputContainer.classList.add('hidden');
+                    const selectedRadio = document.querySelector('input[name="bg-time"]:checked');
+                    if (selectedRadio) this.updateInterval(selectedRadio.value);
+                } else {
+                    presetOptions.classList.add('hidden');
+                    customInputContainer.classList.remove('hidden');
+                }
+            });
+        }
+
+        radioButtons.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (checkbox.checked) this.updateInterval(e.target.value);
+            });
+        });
+
+        if (customApplyBtn) {
+            customApplyBtn.addEventListener('click', () => {
+                const val = parseInt(customInput.value);
+                if (val && val > 0) {
+                    this.updateInterval(val);
+                    alert(`Đã cập nhật thời gian chuyển nền: ${val} giây`);
+                } else {
+                    alert("Vui lòng nhập số giây hợp lệ!");
+                }
+            });
         }
     },
 
+    updateInterval(seconds) {
+        this.state.bgIntervalTime = seconds * 1000;
+        console.log(`Cập nhật tốc độ slide: ${seconds}s`);
+        this.startBackgroundSlideshow();
+    },
+
+    startBackgroundSlideshow() {
+        if (this.state.bgTimerId) clearInterval(this.state.bgTimerId);
+
+        this.state.bgTimerId = setInterval(() => {
+            this.changeBackground();
+        }, this.state.bgIntervalTime);
+    },
+
+    changeBackground() {
+        const bgContainer = document.getElementById('background-container');
+        if (!bgContainer) return;
+
+        // Sử dụng mảng backgrounds từ config hoặc state
+        const bgs = this.state.backgrounds;
+        if (!bgs || bgs.length === 0) return;
+
+        this.state.currentBgIndex++;
+        if (this.state.currentBgIndex >= bgs.length) {
+            this.state.currentBgIndex = 0;
+        }
+
+        const nextImg = bgs[this.state.currentBgIndex];
+        const ctx = window.CURRENT_CONTEXT || '';
+
+        const fullPath = `${ctx}/${nextImg}`.replace('//', '/');
+
+        console.log("Đang đổi nền sang:", fullPath);
+        bgContainer.style.backgroundImage = `url('${fullPath}')`;
+    },
+
     handleEvents() {
-        // Nút Play/Pause
         const playBtn = document.querySelector('.play-pause-btn');
         if (playBtn) {
             playBtn.onclick = () => {
@@ -294,17 +381,11 @@ const App = {
             };
         }
 
-        // Nút Next/Back
         const nextBtn = document.querySelector('.next-btn');
         const prevBtn = document.querySelector('.prev-btn');
         if (nextBtn) nextBtn.onclick = () => this.nextSong();
         if (prevBtn) prevBtn.onclick = () => this.prevSong();
 
-        // Nút đổi ảnh nền
-        const bgBtn = document.getElementById('change-bg-btn');
-        if (bgBtn) bgBtn.onclick = () => this.changeBackground();
-
-        // Điều khiển âm lượng âm thanh môi trường
         document.addEventListener('input', (e) => {
             if (e.target.classList.contains('ambient-slider')) {
                 const id = e.target.dataset.soundId;

@@ -134,11 +134,9 @@ body, html {
     border-radius: 50%;
     background: #fff;
     cursor: pointer;
-    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
 }
 
-/* --- 2. CONTROLS (Ở GIỮA) --- */
-/* Trong HTML nó đứng thứ 3, dùng order: 2 để nằm giữa */
 .player-controls {
     order: 3;
     display: flex;
@@ -165,43 +163,35 @@ body, html {
     font-size: 28px;
 }
 
-/* --- 3. SONG INFO (BÊN PHẢI) --- */
-/* Trong HTML nó đứng thứ 1, dùng order: 3 để đẩy về cuối bên phải */
 .song-info {
     order: 1;
     display: flex;
     align-items: center;
-    justify-content: flex-start; /* Căn toàn bộ khối sang phải */
-
+    justify-content: flex-start;
     gap: 15px;
     flex: 1;
 
-    /* QUAN TRỌNG: Giới hạn chiều rộng tối đa của khối thông tin */
-    /* Để nó không chiếm hết chỗ của nút điều khiển ở giữa */
-    /*max-width: 50%;*/
-    min-width: 0; /* Cần thiết cho Firefox/Flexbox để text wrap hoạt động */
+    min-width: 0;
 }
 
-/* Wrapper chứa text (Tên bài + Ca sĩ) */
 .song-details {
     display: flex;
     flex-direction: column;
-    align-items: flex-end; /* Căn chữ sang phải */
+    align-items: flex-end;
     justify-content: center;
 
-    /* QUAN TRỌNG: Xử lý khi text quá dài */
-    flex: 1;       /* Chiếm không gian còn lại */
-    min-width: 0;  /* "Phép thuật": Cho phép container co lại nhỏ hơn nội dung text */
-    overflow: hidden; /* Ẩn phần thừa */
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .song-details .title,
 .song-details .artist {
-    white-space: nowrap;      /* Không xuống dòng */
-    overflow: hidden;         /* Cắt phần thừa */
-    text-overflow: ellipsis;  /* Thêm dấu "..." */
-    width: 100%;              /* Đảm bảo text nhận giới hạn chiều rộng */
-    text-align: right;        /* Căn lề phải text */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    text-align: right;
     display: block;
 }
 
@@ -220,15 +210,15 @@ body, html {
     width: 100%;
     height: 100%;
 }
+
 .vn-cover img, .vn-vinyl img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-/* --- 4. PROGRESS BAR (DƯỚI CÙNG) --- */
 .progress-area {
-    order: 4; /* Luôn nằm cuối cùng */
+    order: 4;
     flex-basis: 100%;
     width: 100%;
     margin-top: 15px;
@@ -285,7 +275,6 @@ body, html {
     font-family: monospace;
 }
 
-/* --- AMBIENT SOUNDS --- */
 .ambient-panel {
     position: fixed;
     right: 20px;
@@ -335,6 +324,192 @@ body, html {
     cursor: pointer;
     margin-top: -5px;
 }
+
+.menu-container {
+    /* 1. Vị trí cố định trên màn hình */
+    position: fixed;
+    top: 25px;
+    left: 25px; /* Để bên trái. Nếu muốn bên phải thì đổi thành right: 25px; */
+    z-index: 100; /* Đảm bảo luôn nổi lên trên cùng */
+
+    /* 2. Kích thước và hình dáng */
+    width: 45px;
+    height: 45px;
+    border-radius: 50%; /* Bo tròn hoàn toàn */
+
+    /* 3. Căn giữa icon bên trong */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    /* 4. Màu sắc và hiệu ứng kính (Glassmorphism) */
+    background-color: rgba(30, 30, 30, 0.6); /* Nền đen mờ */
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1); /* Viền mỏng tinh tế */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Đổ bóng nhẹ */
+
+    /* 5. Tương tác */
+    color: #E0E0E0;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Chuyển động mượt */
+}
+
+/* Kích thước icon bên trong */
+.menu-container i {
+    font-size: 20px;
+    pointer-events: none; /* Giúp click vào icon vẫn tính là click vào nút */
+}
+
+/* --- HIỆU ỨNG HOVER & CLICK --- */
+
+/* Khi di chuột vào */
+.menu-container:hover {
+    background-color: rgba(255, 255, 255, 0.15); /* Sáng nền lên chút */
+    transform: scale(1.1); /* Phóng to nhẹ */
+    border-color: rgba(255, 255, 255, 0.3); /* Viền sáng hơn */
+    color: #ffffff; /* Icon trắng tinh */
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+}
+
+/* Khi bấm xuống */
+.menu-container:active {
+    transform: scale(0.95); /* Nhún xuống tạo cảm giác bấm thật */
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* --- OVERLAY --- */
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 998; /* Nằm dưới Sidebar nhưng trên mọi thứ khác */
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* --- SIDEBAR --- */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: -320px; /* Ẩn sang trái hoàn toàn */
+    width: 300px; /* Chiếm 1 phần chiều ngang */
+    height: 100%; /* Chiếm toàn bộ chiều dọc */
+    background: rgba(20, 20, 20, 0.95); /* Màu tối đậm đặc hơn chút */
+    backdrop-filter: blur(15px);
+    border-right: 1px solid var(--player-border-color);
+    z-index: 999; /* Cao nhất */
+    transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 25px;
+    box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+    color: var(--text-color);
+}
+
+.sidebar.active {
+    left: 0; /* Trượt vào */
+}
+
+/* Header của Sidebar */
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 15px;
+}
+
+#close-sidebar-btn {
+    font-size: 24px;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+#close-sidebar-btn:hover { color: #ff5555; }
+
+/* Nội dung cài đặt */
+.setting-group h3 { font-size: 1.1rem; margin-bottom: 5px; }
+.setting-desc { font-size: 0.85rem; color: #888; margin-bottom: 15px; }
+
+/* Checkbox Style */
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    margin-bottom: 15px;
+    font-weight: 500;
+}
+.checkbox-container input { margin-right: 5px; }
+
+/* Radio Buttons Group */
+.options-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.radio-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 12px 15px; /* Tăng padding để vùng bấm rộng hơn */
+    border-radius: 8px;
+
+    cursor: pointer; /* Quan trọng: biến con trỏ thành hình bàn tay */
+    user-select: none; /* Tránh việc click liên tục bị bôi đen văn bản */
+    transition: background 0.2s;
+    width: 100%; /* Chiếm hết chiều ngang */
+}
+
+/* Hiệu ứng khi di chuột vào cả khối */
+.radio-group:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* Style cho nút tròn (tùy chọn để đẹp hơn) */
+.radio-group input[type="radio"] {
+    /*accent-color: #1db954; !* Màu xanh Spotify cho nút tròn *!*/
+    transform: scale(1.2); /* Phóng to nút tròn lên xíu */
+    cursor: pointer;
+}
+
+/* Custom Input Style */
+.hidden { display: none !important; }
+
+.custom-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+.custom-container input {
+    background: #333;
+    border: 1px solid #555;
+    color: #fff;
+    padding: 10px;
+    border-radius: 6px;
+    outline: none;
+}
+.custom-container button {
+    background: #1db954; /* Màu xanh Spotify */
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+.custom-container button:hover { background: #1ed760; }
 
 #change-bg-btn {
     cursor: pointer;

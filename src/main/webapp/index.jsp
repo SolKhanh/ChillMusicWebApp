@@ -20,9 +20,55 @@
 
 </head>
 <body>
-<!-- id="background-container" để app.js tìm thấy -->
 <div id="background-container" class="background-container"
      style="background-image: url('${pageContext.request.contextPath}/assets/img/cover/background.jpg');">
+</div>
+
+<div id="menu-container" class="menu-container">
+    <i class="fa-solid fa-bars"></i>
+</div>
+
+<div id="overlay" class="overlay"></div>
+
+<div id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+        <h2>Cài đặt</h2>
+        <i class="fa-solid fa-xmark" id="close-sidebar-btn"></i>
+    </div>
+
+    <div class="sidebar-content">
+        <div class="setting-group">
+            <h3>Tốc độ chuyển nền</h3>
+            <p class="setting-desc">Thời gian giữa các hình nền.</p>
+
+            <label class="checkbox-container">
+                <input type="checkbox" id="use-preset-checkbox" checked>
+                <span class="checkmark"></span>
+                Sử dụng mốc có sẵn
+            </label>
+
+            <label class="radio-group">
+                <input type="radio" name="bg-time" value="10" checked>
+                <span>10 giây</span>
+            </label>
+
+            <label class="radio-group">
+                <input type="radio" name="bg-time" value="15">
+                <span>15 giây</span>
+            </label>
+
+            <label class="radio-group">
+                <input type="radio" name="bg-time" value="20">
+                <span>20 giây</span>
+            </label>
+
+            <div id="custom-input-container" class="custom-container hidden">
+                <label for="custom-time-input">Nhập số giây:</label>
+                <input type="number" id="custom-time-input" min="1" placeholder="Ví dụ: 5">
+                <button id="apply-custom-btn">Áp dụng</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="main-container">
