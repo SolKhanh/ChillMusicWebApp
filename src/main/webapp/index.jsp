@@ -32,43 +32,28 @@
 
 <div id="sidebar" class="sidebar">
     <div class="sidebar-header">
-        <h2>Cài đặt</h2>
+        <h2>Thư viện</h2>
         <i class="fa-solid fa-xmark" id="close-sidebar-btn"></i>
     </div>
 
+    <div class="sidebar-tabs">
+        <button class="tab-btn active" data-tab="backgrounds">Backgrounds</button>
+        <button class="tab-btn" data-tab="albums">Albums</button>
+    </div>
+
     <div class="sidebar-content">
-        <div class="setting-group">
-            <h3>Tốc độ chuyển nền</h3>
-            <p class="setting-desc">Thời gian giữa các hình nền.</p>
+        <div id="tab-backgrounds" class="tab-pane active">
+            <div class="shelf-grid" id="bg-shelf">
+            </div>
+        </div>
 
-            <label class="checkbox-container">
-                <input type="checkbox" id="use-preset-checkbox" checked>
-                <span class="checkmark"></span>
-                Sử dụng mốc có sẵn
-            </label>
-
-            <label class="radio-group">
-                <input type="radio" name="bg-time" value="10" checked>
-                <span>10 giây</span>
-            </label>
-
-            <label class="radio-group">
-                <input type="radio" name="bg-time" value="15">
-                <span>15 giây</span>
-            </label>
-
-            <label class="radio-group">
-                <input type="radio" name="bg-time" value="20">
-                <span>20 giây</span>
-            </label>
-
-            <div id="custom-input-container" class="custom-container hidden">
-                <label for="custom-time-input">Nhập số giây:</label>
-                <input type="number" id="custom-time-input" min="1" placeholder="Ví dụ: 5">
-                <button id="apply-custom-btn">Áp dụng</button>
+        <div id="tab-albums" class="tab-pane">
+            <div class="shelf-grid" id="album-shelf">
             </div>
         </div>
     </div>
+
+    <input type="file" id="upload-input" style="display: none;" accept="image/*">
 </div>
 
 <div class="main-container">
