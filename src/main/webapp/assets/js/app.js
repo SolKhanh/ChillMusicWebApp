@@ -2,18 +2,17 @@ const App = {
     config: {
         apiSongs: 'api/songs',
         apiSounds: 'api/sounds',
-        backgrounds: [
-            'assets/img/cover/background.jpg',
-            'assets/img/cover/background2.jpg',
-            'assets/img/cover/background3.jpg'
-        ],
-        defaultCover: 'assets/img/cover/cover.jpg'
+        apiBackgrounds: 'api/backgrounds',
+        imgBaseUrl: 'assets/img/',
+        backgroundBaseUrl: 'assets/img/backgrounds/',
+        coverBaseUrl: 'assets/img/covers/',
+        defaultCover: 'assets/img/covers/cover.jpg'
     },
     state: {
         songs: [],
         sounds: [],
         currentSongIndex: 0,
-        currentBgIndex: 0,
+        currentBgIndex: -1,
         mainAudio: new Audio(),
 
         backgrounds: [],
@@ -26,10 +25,6 @@ const App = {
 
     async init() {
         console.log("App initializing...");
-
-        // Sao chép danh sách background từ config sang state để dễ quản lý
-        this.state.backgrounds = [...this.config.backgrounds];
-
         await this.loadData();
 
         // Khởi tạo các thành phần
@@ -44,6 +39,7 @@ const App = {
         this.setupVolumeControl();
 
         // Bắt đầu slideshow nền ngay khi vào trang
+        this.changeBackground();
         this.startBackgroundSlideshow();
 
         // Cập nhật giao diện ban đầu
@@ -54,13 +50,15 @@ const App = {
 
     async loadData() {
         try {
-            const [songsRes, soundsRes] = await Promise.all([
+            const [songsRes, soundsRes, backgroundsRes] = await Promise.all([
                 fetch(this.config.apiSongs),
-                fetch(this.config.apiSounds)
+                fetch(this.config.apiSounds),
+                fetch(this.config.apiBackgrounds)
             ]);
             // Kiểm tra phản hồi trước khi parse JSON (tránh lỗi nếu API chết)
-            if(songsRes.ok) this.state.songs = await songsRes.json();
-            if(soundsRes.ok) this.state.sounds = await soundsRes.json();
+            if (songsRes.ok) this.state.songs = await songsRes.json();
+            if (soundsRes.ok) this.state.sounds = await soundsRes.json();
+            if (backgroundsRes.ok) this.state.backgrounds = await backgroundsRes.json();
         } catch (error) {
             console.error("Lỗi lấy dữ liệu:", error);
             // Dữ liệu mẫu fallback nếu API lỗi (để test giao diện)
@@ -97,7 +95,7 @@ const App = {
     loadSong(index) {
         this.state.currentSongIndex = index;
         const song = this.state.songs[index];
-        if(!song) return;
+        if (!song) return;
 
         this.state.mainAudio.src = song.filePath;
         this.updateSongUI();
@@ -106,9 +104,9 @@ const App = {
         const playBtn = document.querySelector('.play-pause-btn');
         if (this.state.isPlaying) {
             this.state.mainAudio.play();
-            if(playBtn) playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            if (playBtn) playBtn.innerHTML = '<i class="fas fa-pause"></i>';
         } else {
-            if(playBtn) playBtn.innerHTML = '<i class="fas fa-play"></i>';
+            if (playBtn) playBtn.innerHTML = '<i class="fas fa-play"></i>';
         }
 
         const currTimeEl = document.querySelector('.current-time');
@@ -347,22 +345,33 @@ const App = {
         const bgContainer = document.getElementById('background-container');
         if (!bgContainer) return;
 
-        // Sử dụng mảng backgrounds từ config hoặc state
         const bgs = this.state.backgrounds;
         if (!bgs || bgs.length === 0) return;
-
         this.state.currentBgIndex++;
         if (this.state.currentBgIndex >= bgs.length) {
             this.state.currentBgIndex = 0;
         }
 
-        const nextImg = bgs[this.state.currentBgIndex];
+        const background = this.state.backgrounds[this.state.currentBgIndex];
+        const filename = background.name;
+        if (!filename) return;
         const ctx = window.CURRENT_CONTEXT || '';
+        let path = `${ctx}/${this.config.backgroundBaseUrl}${filename}`;
 
-        const fullPath = `${ctx}/${nextImg}`.replace('//', '/');
+        path = path.replace(/([^:]\/)\/+/g, "$1");
+        bgContainer.style.backgroundImage = `url('${path}')`;
 
-        console.log("Đang đổi nền sang:", fullPath);
-        bgContainer.style.backgroundImage = `url('${fullPath}')`;
+        const imgLoader = new Image();
+        imgLoader.src = path;
+
+        imgLoader.onload = () => {
+            bgContainer.style.backgroundImage = `url('${path}')`;
+            console.log("Đổi nền sang: ", path)
+        }
+
+        imgLoader.onerror = () => {
+            console.error("Không tải được ảnh");
+        }
     },
 
     handleEvents() {
