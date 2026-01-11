@@ -326,55 +326,48 @@ body, html {
 }
 
 .menu-container {
-    /* 1. Vị trí cố định trên màn hình */
     position: fixed;
     top: 25px;
-    left: 25px; /* Để bên trái. Nếu muốn bên phải thì đổi thành right: 25px; */
-    z-index: 100; /* Đảm bảo luôn nổi lên trên cùng */
+    left: 25px;
+    z-index: 100;
 
-    /* 2. Kích thước và hình dáng */
     width: 45px;
     height: 45px;
-    border-radius: 50%; /* Bo tròn hoàn toàn */
+    border-radius: 50%;
 
-    /* 3. Căn giữa icon bên trong */
     display: flex;
     align-items: center;
     justify-content: center;
 
-    /* 4. Màu sắc và hiệu ứng kính (Glassmorphism) */
-    background-color: rgba(30, 30, 30, 0.6); /* Nền đen mờ */
+    background-color: rgba(30, 30, 30, 0.6);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1); /* Viền mỏng tinh tế */
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Đổ bóng nhẹ */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 
-    /* 5. Tương tác */
     color: #E0E0E0;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Chuyển động mượt */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Kích thước icon bên trong */
 .menu-container i {
     font-size: 20px;
-    pointer-events: none; /* Giúp click vào icon vẫn tính là click vào nút */
+    pointer-events: none;
 }
 
 /* --- HIỆU ỨNG HOVER & CLICK --- */
-
-/* Khi di chuột vào */
 .menu-container:hover {
-    background-color: rgba(255, 255, 255, 0.15); /* Sáng nền lên chút */
-    transform: scale(1.1); /* Phóng to nhẹ */
-    border-color: rgba(255, 255, 255, 0.3); /* Viền sáng hơn */
-    color: #ffffff; /* Icon trắng tinh */
+    background-color: rgba(255, 255, 255, 0.15);
+    transform: scale(1.1);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
     box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
 }
 
 /* Khi bấm xuống */
 .menu-container:active {
-    transform: scale(0.95); /* Nhún xuống tạo cảm giác bấm thật */
+    transform: scale(0.95);
     background-color: rgba(255, 255, 255, 0.05);
 }
 
@@ -386,7 +379,7 @@ body, html {
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 998; /* Nằm dưới Sidebar nhưng trên mọi thứ khác */
+    z-index: 998;
     opacity: 0;
     visibility: hidden;
     transition: all 0.3s ease;
@@ -397,125 +390,167 @@ body, html {
     visibility: visible;
 }
 
-/* --- SIDEBAR --- */
+/* --- SIDEBAR TABS --- */
 .sidebar {
     position: fixed;
     top: 0;
-    left: -320px; /* Ẩn sang trái hoàn toàn */
-    width: 300px; /* Chiếm 1 phần chiều ngang */
-    height: 100%; /* Chiếm toàn bộ chiều dọc */
-    background: rgba(20, 20, 20, 0.95); /* Màu tối đậm đặc hơn chút */
+    left: -350px;
+    width: 350px;
+    height: 100%;
+    background: rgba(20, 20, 20, 0.95);
     backdrop-filter: blur(15px);
-    border-right: 1px solid var(--player-border-color);
-    z-index: 999; /* Cao nhất */
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 999;
     transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    padding: 25px;
-    box-shadow: 5px 0 15px rgba(0,0,0,0.5);
-    color: var(--text-color);
+
+    display: flex;
+    flex-direction: column;
+    box-shadow: 5px 0 25px rgba(0,0,0,0.5);
 }
 
 .sidebar.active {
-    left: 0; /* Trượt vào */
+    left: 0;
 }
 
-/* Header của Sidebar */
+/* --- SIDEBAR HEADER --- */
 .sidebar-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
-    border-bottom: 1px solid #333;
-    padding-bottom: 15px;
+    padding: 20px 25px;
+}
+
+.sidebar-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
 }
 
 #close-sidebar-btn {
     font-size: 24px;
     cursor: pointer;
-    transition: color 0.2s;
+    color: #888;
+    transition: color 0.2s, transform 0.2s;
 }
-#close-sidebar-btn:hover { color: #ff5555; }
 
-/* Nội dung cài đặt */
-.setting-group h3 { font-size: 1.1rem; margin-bottom: 5px; }
-.setting-desc { font-size: 0.85rem; color: #888; margin-bottom: 15px; }
+#close-sidebar-btn:hover {
+    color: #ff5555;
+    transform: rotate(90deg);
+}
 
-/* Checkbox Style */
-.checkbox-container {
+/* --- SIDEBAR CONTENT WRAPPER --- */
+.sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 20px 20px 20px;
+}
+
+.sidebar-content::-webkit-scrollbar {
+    width: 6px;
+}
+.sidebar-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+.sidebar-content::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 3px;
+}
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+    background: #666;
+}
+
+.sidebar-tabs {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    margin-bottom: 15px;
-    font-weight: 500;
-}
-.checkbox-container input { margin-right: 5px; }
-
-/* Radio Buttons Group */
-.options-container {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    border-bottom: 1px solid #333;
+    margin-bottom: 20px;
+    padding: 0 20px;
 }
 
-.radio-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 12px 15px; /* Tăng padding để vùng bấm rộng hơn */
-    border-radius: 8px;
-
-    cursor: pointer; /* Quan trọng: biến con trỏ thành hình bàn tay */
-    user-select: none; /* Tránh việc click liên tục bị bôi đen văn bản */
-    transition: background 0.2s;
-    width: 100%; /* Chiếm hết chiều ngang */
-}
-
-/* Hiệu ứng khi di chuột vào cả khối */
-.radio-group:hover {
-    background: rgba(255, 255, 255, 0.15);
-}
-
-/* Style cho nút tròn (tùy chọn để đẹp hơn) */
-.radio-group input[type="radio"] {
-    /*accent-color: #1db954; !* Màu xanh Spotify cho nút tròn *!*/
-    transform: scale(1.2); /* Phóng to nút tròn lên xíu */
-    cursor: pointer;
-}
-
-/* Custom Input Style */
-.hidden { display: none !important; }
-
-.custom-container {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 10px;
-}
-.custom-container input {
-    background: #333;
-    border: 1px solid #555;
-    color: #fff;
-    padding: 10px;
-    border-radius: 6px;
-    outline: none;
-}
-.custom-container button {
-    background: #1db954; /* Màu xanh Spotify */
-    color: white;
+.tab-btn {
+    flex: 1;
+    background: transparent;
     border: none;
-    padding: 10px;
-    border-radius: 6px;
+    color: #888;
+    padding: 10px 0;
     cursor: pointer;
     font-weight: bold;
+    font-size: 1rem;
+    transition: all 0.3s;
+    border-bottom: 2px solid transparent;
 }
-.custom-container button:hover { background: #1ed760; }
 
-#change-bg-btn {
+.tab-btn:hover {
+    color: #fff;
+}
+
+.tab-btn.active {
+    color: #1db954;
+    border-bottom: 2px solid #1db954;
+}
+
+.tab-pane {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+.shelf-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    padding-bottom: 20px;
+}
+
+
+.shelf-item {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 8px;
+    overflow: hidden;
     cursor: pointer;
-    transition: transform 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s;
+    background: #2a2a2a;
+    border: 1px solid transparent;
 }
 
-#change-bg-btn:active {
-    transform: scale(0.9);
+.shelf-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    border-color: #555;
+}
+
+.shelf-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.shelf-item.add-new {
+    border: 2px dashed #555;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #888;
+    font-size: 24px;
+}
+
+.shelf-item.add-new:hover {
+    border-color: #1db954;
+    color: #1db954;
+    background: rgba(29, 185, 84, 0.1);
+}
+
+.shelf-item.selected {
+    border: 2px solid #1db954;
+    box-shadow: 0 0 10px rgba(29, 185, 84, 0.4);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }

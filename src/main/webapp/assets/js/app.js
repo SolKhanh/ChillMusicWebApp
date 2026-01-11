@@ -2,18 +2,17 @@ const App = {
     config: {
         apiSongs: 'api/songs',
         apiSounds: 'api/sounds',
-        backgrounds: [
-            'assets/img/cover/background.jpg',
-            'assets/img/cover/background2.jpg',
-            'assets/img/cover/background3.jpg'
-        ],
-        defaultCover: 'assets/img/cover/cover.jpg'
+        apiBackgrounds: 'api/backgrounds',
+        imgBaseUrl: 'assets/img/',
+        backgroundBaseUrl: 'assets/img/backgrounds/',
+        coverBaseUrl: 'assets/img/covers/',
+        defaultCover: 'assets/img/covers/cover.jpg'
     },
     state: {
         songs: [],
         sounds: [],
         currentSongIndex: 0,
-        currentBgIndex: 0,
+        currentBgIndex: -1,
         mainAudio: new Audio(),
 
         backgrounds: [],
@@ -26,10 +25,6 @@ const App = {
 
     async init() {
         console.log("App initializing...");
-
-        // Sao chép danh sách background từ config sang state để dễ quản lý
-        this.state.backgrounds = [...this.config.backgrounds];
-
         await this.loadData();
 
         // Khởi tạo các thành phần
@@ -44,6 +39,7 @@ const App = {
         this.setupVolumeControl();
 
         // Bắt đầu slideshow nền ngay khi vào trang
+        this.changeBackground();
         this.startBackgroundSlideshow();
 
         // Cập nhật giao diện ban đầu
@@ -54,13 +50,15 @@ const App = {
 
     async loadData() {
         try {
-            const [songsRes, soundsRes] = await Promise.all([
+            const [songsRes, soundsRes, backgroundsRes] = await Promise.all([
                 fetch(this.config.apiSongs),
-                fetch(this.config.apiSounds)
+                fetch(this.config.apiSounds),
+                fetch(this.config.apiBackgrounds)
             ]);
             // Kiểm tra phản hồi trước khi parse JSON (tránh lỗi nếu API chết)
-            if(songsRes.ok) this.state.songs = await songsRes.json();
-            if(soundsRes.ok) this.state.sounds = await soundsRes.json();
+            if (songsRes.ok) this.state.songs = await songsRes.json();
+            if (soundsRes.ok) this.state.sounds = await soundsRes.json();
+            if (backgroundsRes.ok) this.state.backgrounds = await backgroundsRes.json();
         } catch (error) {
             console.error("Lỗi lấy dữ liệu:", error);
             // Dữ liệu mẫu fallback nếu API lỗi (để test giao diện)
@@ -90,25 +88,23 @@ const App = {
         if (this.state.songs.length > 0) {
             this.loadSong(0);
         }
-        // Tự động chuyển bài khi kết thúc
         this.state.mainAudio.onended = () => this.nextSong();
     },
 
     loadSong(index) {
         this.state.currentSongIndex = index;
         const song = this.state.songs[index];
-        if(!song) return;
+        if (!song) return;
 
         this.state.mainAudio.src = song.filePath;
         this.updateSongUI();
 
-        // Cập nhật trạng thái nút Play/Pause
         const playBtn = document.querySelector('.play-pause-btn');
         if (this.state.isPlaying) {
             this.state.mainAudio.play();
-            if(playBtn) playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            if (playBtn) playBtn.innerHTML = '<i class="fas fa-pause"></i>';
         } else {
-            if(playBtn) playBtn.innerHTML = '<i class="fas fa-play"></i>';
+            if (playBtn) playBtn.innerHTML = '<i class="fas fa-play"></i>';
         }
 
         const currTimeEl = document.querySelector('.current-time');
@@ -212,8 +208,6 @@ const App = {
         });
 
         mainAudio.addEventListener('timeupdate', () => {
-            // Chỉ update slider nếu người dùng không đang kéo nó
-            // (Thực tế nên thêm cờ isDragging, nhưng đơn giản thì để vậy cũng ổn)
             slider.value = mainAudio.currentTime;
             currentTimeEl.innerText = this.formatTime(mainAudio.currentTime);
         });
@@ -266,66 +260,151 @@ const App = {
         else icon.classList.add('fa-volume-high');
     },
 
+    // --- LOGIC GIAO DIỆN KỆ (SHELVES) ---
     setupSidebarEvents() {
         const menuBtn = document.querySelector('.menu-container');
         const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('overlay');
+        const overlay = document.getElementById('overlay'); // Đảm bảo bạn có thẻ div id="overlay" trong HTML
         const closeBtn = document.getElementById('close-sidebar-btn');
 
         const toggleSidebar = (show) => {
             if (show) {
                 sidebar.classList.add('active');
-                overlay.classList.add('active');
+                if (overlay) overlay.classList.add('active');
             } else {
                 sidebar.classList.remove('active');
-                overlay.classList.remove('active');
+                if (overlay) overlay.classList.remove('active');
             }
         };
 
-        if (menuBtn) menuBtn.addEventListener('click', () => toggleSidebar(true));
-        if (closeBtn) closeBtn.addEventListener('click', () => toggleSidebar(false));
-        if (overlay) overlay.addEventListener('click', () => toggleSidebar(false));
+        if (menuBtn) menuBtn.onclick = () => toggleSidebar(true);
+        if (closeBtn) closeBtn.onclick = () => toggleSidebar(false);
+        if (overlay) overlay.onclick = () => toggleSidebar(false);
     },
 
-    // --- LOGIC CÀI ĐẶT (SETTINGS) ---
     setupSettingsLogic() {
-        const checkbox = document.getElementById('use-preset-checkbox');
-        const presetOptions = document.getElementById('preset-options');
-        const customInputContainer = document.getElementById('custom-input-container');
-        const radioButtons = document.querySelectorAll('input[name="bg-time"]');
-        const customApplyBtn = document.getElementById('apply-custom-btn');
-        const customInput = document.getElementById('custom-time-input');
+        this.setupTabs();
+        this.renderShelves();
+    },
 
-        if (checkbox) {
-            checkbox.addEventListener('change', (e) => {
-                if (e.target.checked) {
-                    presetOptions.classList.remove('hidden');
-                    customInputContainer.classList.add('hidden');
-                    const selectedRadio = document.querySelector('input[name="bg-time"]:checked');
-                    if (selectedRadio) this.updateInterval(selectedRadio.value);
-                } else {
-                    presetOptions.classList.add('hidden');
-                    customInputContainer.classList.remove('hidden');
-                }
-            });
-        }
+    setupTabs() {
+        const tabs = document.querySelectorAll('.tab-btn');
+        const panes = document.querySelectorAll('.tab-pane');
 
-        radioButtons.forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                if (checkbox.checked) this.updateInterval(e.target.value);
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // 1. Xóa active cũ
+                tabs.forEach(t => t.classList.remove('active'));
+                panes.forEach(p => p.classList.remove('active'));
+
+                // 2. Thêm active mới
+                tab.classList.add('active');
+                const targetId = `tab-${tab.dataset.tab}`; // tab-backgrounds hoặc tab-albums
+                document.getElementById(targetId).classList.add('active');
             });
         });
+    },
 
-        if (customApplyBtn) {
-            customApplyBtn.addEventListener('click', () => {
-                const val = parseInt(customInput.value);
-                if (val && val > 0) {
-                    this.updateInterval(val);
-                    alert(`Đã cập nhật thời gian chuyển nền: ${val} giây`);
-                } else {
-                    alert("Vui lòng nhập số giây hợp lệ!");
+    renderShelves() {
+        this.renderBackgroundShelf();
+        this.renderAlbumShelf();
+    },
+
+    renderBackgroundShelf() {
+        const container = document.getElementById('bg-shelf');
+        if (!container) return;
+        container.innerHTML = '';
+
+        const addBtn = document.createElement('div');
+        addBtn.className = 'shelf-item add-new';
+        addBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
+        addBtn.onclick = () => this.handleUploadClick('background');
+        container.appendChild(addBtn);
+
+        const ctx = window.CURRENT_CONTEXT || '';
+
+        this.state.backgrounds.forEach((bg, index) => {
+            const item = document.createElement('div');
+            const isSelected = index === this.state.currentBgIndex;
+            item.className = `shelf-item ${isSelected ? 'selected' : ''}`;
+
+            const filename = bg.name || bg.fileName || bg;
+            let path = `${ctx}/${this.config.backgroundBaseUrl}${filename}`;
+            path = path.replace(/([^:]\/)\/+/g, "$1");
+
+            item.innerHTML = `<img src="${path}" loading="lazy" alt="bg">`;
+
+            item.onclick = () => {
+                document.querySelectorAll('#bg-shelf .shelf-item').forEach(el => el.classList.remove('selected'));
+                item.classList.add('selected');
+
+                this.state.currentBgIndex = index - 1;
+                this.changeBackground();
+            };
+
+            container.appendChild(item);
+        });
+    },
+
+    renderAlbumShelf() {
+        const container = document.getElementById('album-shelf');
+        if (!container) return;
+        container.innerHTML = '';
+
+        const addBtn = document.createElement('div');
+        addBtn.className = 'shelf-item add-new';
+        addBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
+        addBtn.onclick = () => this.handleUploadClick('album');
+        container.appendChild(addBtn);
+
+        const uniqueAlbums = [];
+        const seenAlbums = new Set();
+
+        this.state.songs.forEach((song, index) => {
+            const albumKey = song.album || song.title;
+            if (!seenAlbums.has(albumKey)) {
+                seenAlbums.add(albumKey);
+                uniqueAlbums.push({ ...song, originalIndex: index });
+            }
+        });
+
+        const ctx = window.CURRENT_CONTEXT || '';
+
+        uniqueAlbums.forEach(album => {
+            const item = document.createElement('div');
+            item.className = 'shelf-item';
+
+            const rawCover = album.coverImage || album.cover;
+            let coverSrc = "";
+            if (rawCover && rawCover.startsWith('http')) coverSrc = rawCover;
+            else coverSrc = `${ctx}/${rawCover}`.replace('//', '/');
+
+            item.innerHTML = `<img src="${coverSrc}" loading="lazy" alt="${album.album}">`;
+
+            item.onclick = () => {
+                console.log(`Chơi album: ${album.album}`);
+                this.loadSong(album.originalIndex);
+
+                document.querySelectorAll('#album-shelf .shelf-item').forEach(el => el.classList.remove('selected'));
+                item.classList.add('selected');
+            };
+
+            container.appendChild(item);
+        });
+    },
+
+    handleUploadClick(type) {
+        const fileInput = document.getElementById('upload-input');
+        if(fileInput) {
+            fileInput.click();
+
+            fileInput.onchange = (e) => {
+                const file = e.target.files[0];
+                if(file) {
+                    alert(`(Tính năng Demo) Bạn đã chọn file: ${file.name} để upload vào ${type}`);
+
                 }
-            });
+            };
         }
     },
 
@@ -347,22 +426,33 @@ const App = {
         const bgContainer = document.getElementById('background-container');
         if (!bgContainer) return;
 
-        // Sử dụng mảng backgrounds từ config hoặc state
         const bgs = this.state.backgrounds;
         if (!bgs || bgs.length === 0) return;
-
         this.state.currentBgIndex++;
         if (this.state.currentBgIndex >= bgs.length) {
             this.state.currentBgIndex = 0;
         }
 
-        const nextImg = bgs[this.state.currentBgIndex];
+        const background = this.state.backgrounds[this.state.currentBgIndex];
+        const filename = background.name;
+        if (!filename) return;
         const ctx = window.CURRENT_CONTEXT || '';
+        let path = `${ctx}/${this.config.backgroundBaseUrl}${filename}`;
 
-        const fullPath = `${ctx}/${nextImg}`.replace('//', '/');
+        path = path.replace(/([^:]\/)\/+/g, "$1");
+        bgContainer.style.backgroundImage = `url('${path}')`;
 
-        console.log("Đang đổi nền sang:", fullPath);
-        bgContainer.style.backgroundImage = `url('${fullPath}')`;
+        const imgLoader = new Image();
+        imgLoader.src = path;
+
+        imgLoader.onload = () => {
+            bgContainer.style.backgroundImage = `url('${path}')`;
+            console.log("Đổi nền sang:", path);
+        };
+
+        imgLoader.onerror = () => {
+            console.error("Không tải được ảnh:", path);
+        };
     },
 
     handleEvents() {
