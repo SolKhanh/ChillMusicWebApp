@@ -24,8 +24,49 @@
      style="background-image: url('${pageContext.request.contextPath}/assets/img/cover/background.jpg');">
 </div>
 
-<div id="menu-container" class="menu-container">
-    <i class="fa-solid fa-bars"></i>
+<div class="top-bar">
+    <div id="menu-btn" class="icon-btn">
+        <i class="fa-solid fa-bars"></i>
+    </div>
+
+    <div id="user-btn" class="icon-btn">
+        <i class="fa-solid fa-user"></i>
+        <span id="login-status-dot" class="status-dot"></span>
+    </div>
+</div>
+
+<div id="user-popup" class="user-popup">
+    <div id="guest-view">
+        <p>Chào bạn,</p>
+        <button id="btn-open-login" class="auth-btn">Đăng nhập</button>
+        <button id="btn-open-register" class="auth-btn outline">Đăng ký</button>
+    </div>
+
+    <div id="user-view" style="display: none;">
+        <p>Xin chào, <b id="display-username">User</b></p>
+        <div class="divider"></div>
+        <button id="btn-logout" class="auth-btn outline">Đăng xuất</button>
+    </div>
+</div>
+
+<div id="auth-modal" class="modal-overlay">
+    <div class="modal-content">
+        <span id="btn-close-auth" class="close-modal">&times;</span>
+        <h2 id="auth-title">Đăng Nhập</h2>
+
+        <form id="auth-form">
+            <input type="text" id="username" placeholder="Tên đăng nhập" required>
+            <input type="password" id="password" placeholder="Mật khẩu" required>
+            <input type="email" id="email" placeholder="Email" style="display:none;">
+
+            <button type="submit" class="submit-btn">Xác nhận</button>
+        </form>
+
+        <p style="margin-top: 15px; font-size: 0.9em; color: #aaa;">
+            <span id="switch-auth-text">Chưa có tài khoản?</span>
+            <a href="#" id="link-switch-auth">Đăng ký ngay</a>
+        </p>
+    </div>
 </div>
 
 <div id="overlay" class="overlay"></div>
@@ -43,13 +84,40 @@
 
     <div class="sidebar-content">
         <div id="tab-backgrounds" class="tab-pane active">
-            <div class="shelf-grid" id="bg-shelf">
+
+            <div class="shelf-section">
+                <h3 class="shelf-title">Có sẵn: </h3>
+                <div class="shelf-scroll" id="bg-shelf-default">
+                </div>
             </div>
+
+            <div class="shelf-section">
+                <h3 class="shelf-title">Của bạn</h3>
+                <div class="shelf-scroll" id="bg-shelf-user">
+                    <div class="shelf-item add-new">
+                        <i class="fa-solid fa-plus"></i>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <div id="tab-albums" class="tab-pane">
-            <div class="shelf-grid" id="album-shelf">
+
+            <div class="shelf-section">
+                <h3 class="shelf-title">Album gợi ý</h3>
+                <div class="shelf-scroll" id="album-shelf-default"></div>
             </div>
+
+            <div class="shelf-section">
+                <h3 class="shelf-title">Album của bạn</h3>
+                <div class="shelf-scroll" id="album-shelf-user">
+                    <div class="shelf-item add-new">
+                        <i class="fa-solid fa-plus"></i>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -63,9 +131,7 @@
     <!-- Nội dung sẽ được app.js tự động tạo ra -->
 </div>
 <div class="player-container">
-
     <div class="song-info">
-
         <div class="vn-album-wrapper">
             <div class="vn-cover">
                 <img src="${pageContext.request.contextPath}/assets/img/cover/cover.jpg" alt="Cover">

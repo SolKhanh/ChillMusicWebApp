@@ -287,7 +287,7 @@ body, html {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    z-index: 100;
+    /*z-index: 100;*/
     min-width: 180px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
@@ -325,50 +325,164 @@ body, html {
     margin-top: -5px;
 }
 
-.menu-container {
+/* --- TOP BAR --- */
+.top-bar {
     position: fixed;
-    top: 25px;
-    left: 25px;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 25px;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none; /* Để click xuyên qua vùng trống */
     z-index: 100;
+}
 
+/* Nút Icon chung (Menu & User) */
+.icon-btn {
+    pointer-events: auto; /* Bật lại click cho nút */
     width: 45px;
     height: 45px;
     border-radius: 50%;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     background-color: rgba(30, 30, 30, 0.6);
     backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-
     color: #E0E0E0;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
 }
 
-/* Kích thước icon bên trong */
-.menu-container i {
-    font-size: 20px;
-    pointer-events: none;
-}
+.icon-btn i { font-size: 20px; }
 
-/* --- HIỆU ỨNG HOVER & CLICK --- */
-.menu-container:hover {
+.icon-btn:hover {
     background-color: rgba(255, 255, 255, 0.15);
     transform: scale(1.1);
-    border-color: rgba(255, 255, 255, 0.3);
     color: #ffffff;
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
 }
 
-/* Khi bấm xuống */
-.menu-container:active {
-    transform: scale(0.95);
-    background-color: rgba(255, 255, 255, 0.05);
+.status-dot {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 10px;
+    height: 10px;
+    background-color: #1db954;
+    border-radius: 50%;
+    border: 2px solid #222;
+    display: none; /* Hiện khi login */
+}
+
+/* --- USER POPUP (Góc phải) --- */
+.user-popup {
+    position: fixed;
+    top: 80px;
+    right: 25px;
+    width: 200px;
+    background: rgba(30, 30, 30, 0.95);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 15px;
+    color: #fff;
+    transform: scale(0.9);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 99;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+
+.user-popup.active {
+    transform: scale(1);
+    opacity: 1;
+    visibility: visible;
+}
+
+.auth-btn {
+    width: 100%;
+    padding: 8px;
+    margin-top: 10px;
+    border-radius: 20px;
+    border: none;
+    background: #1db954;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.auth-btn.outline {
+    background: transparent;
+    border: 1px solid #555;
+    color: #ccc;
+}
+
+.auth-btn:hover { opacity: 0.9; }
+.auth-btn.outline:hover { border-color: #fff; color: #fff; }
+
+/* --- AUTH MODAL (Form Đăng nhập) --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: 0.3s;
+}
+
+.modal-overlay.active { opacity: 1; visibility: visible; }
+
+.modal-content {
+    background: #222;
+    padding: 30px;
+    border-radius: 15px;
+    width: 350px;
+    text-align: center;
+    border: 1px solid #444;
+    position: relative;
+}
+
+.modal-content input {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0;
+    background: #333;
+    border: 1px solid #444;
+    color: #fff;
+    border-radius: 5px;
+}
+
+.submit-btn {
+    width: 100%;
+    padding: 12px;
+    background: #1db954;
+    border: none;
+    border-radius: 25px;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+    font-size: 1rem;
+}
+
+.close-modal {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 24px;
+    cursor: pointer;
+    color: #888;
 }
 
 /* --- OVERLAY --- */
@@ -405,7 +519,7 @@ body, html {
 
     display: flex;
     flex-direction: column;
-    box-shadow: 5px 0 25px rgba(0,0,0,0.5);
+    box-shadow: 5px 0 25px rgba(0, 0, 0, 0.5);
 }
 
 .sidebar.active {
@@ -449,13 +563,16 @@ body, html {
 .sidebar-content::-webkit-scrollbar {
     width: 6px;
 }
+
 .sidebar-content::-webkit-scrollbar-track {
     background: transparent;
 }
+
 .sidebar-content::-webkit-scrollbar-thumb {
     background: #444;
     border-radius: 3px;
 }
+
 .sidebar-content::-webkit-scrollbar-thumb:hover {
     background: #666;
 }
@@ -498,29 +615,61 @@ body, html {
     display: block;
 }
 
-.shelf-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-    padding-bottom: 20px;
+.shelf-section {
+    margin-bottom: 25px;
 }
+
+.shelf-title {
+    font-size: 0.95rem;
+    color: #fff;
+    margin-bottom: 10px;
+    font-weight: 600;
+    padding-left: 5px;
+    border-left: 3px solid #1db954;
+    line-height: 1;
+}
+
+.shelf-scroll {
+    display: flex;
+    gap: 15px;
+    margin: 0 -20px;
+    padding: 0 20px 15px 20px;
+
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+}
+
+.shelf-scroll::-webkit-scrollbar {
+    height: 0;
+    display: none;
+}
+
+/*.shelf-scroll::-webkit-scrollbar-thumb {*/
+/*    background: #444;*/
+/*    border-radius: 3px;*/
+/*}*/
 
 
 .shelf-item {
-    position: relative;
+    flex: 0 0 28%;
+
+    /*scroll-snap-align: start;*/
     aspect-ratio: 1 / 1;
+    position: relative;
     border-radius: 8px;
     overflow: hidden;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
     background: #2a2a2a;
-    border: 1px solid transparent;
+    transition: transform 0.2s;
 }
 
 .shelf-item:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-    border-color: #555;
+    transform: translate(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+
 }
 
 .shelf-item img {
@@ -551,6 +700,12 @@ body, html {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
