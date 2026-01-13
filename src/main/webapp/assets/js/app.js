@@ -37,7 +37,9 @@ const App = {
             const ctx = window.CURRENT_CONTEXT || '';
             return `${ctx}/${path}`.replace(/\/\//g, '/'); // Fix lỗi 2 dấu //
         },
-        getElement(id) { return document.getElementById(id); }
+        getElement(id) {
+            return document.getElementById(id);
+        }
     },
 
     async init() {
@@ -115,7 +117,10 @@ const App = {
             // Link chuyển đổi Login <-> Register
             const switchLink = document.getElementById('switch-auth-link');
             if (switchLink) {
-                switchLink.onclick = (e) => { e.preventDefault(); this.switchMode(); };
+                switchLink.onclick = (e) => {
+                    e.preventDefault();
+                    this.switchMode();
+                };
             }
 
             // Form Submit
@@ -125,7 +130,9 @@ const App = {
             // Click Overlay để đóng modal
             const overlay = document.getElementById('auth-modal');
             if (overlay) {
-                overlay.onclick = (e) => { if (e.target === overlay) this.closeModal(); };
+                overlay.onclick = (e) => {
+                    if (e.target === overlay) this.closeModal();
+                };
             }
 
             // Click toàn trang để đóng User Popup
@@ -142,7 +149,9 @@ const App = {
                 const res = await fetch('api/auth/me');
                 if (res.ok) this.onLoginSuccess(await res.json());
                 else this.onLogoutSuccess();
-            } catch (e) { console.error("Auth check failed", e); }
+            } catch (e) {
+                console.error("Auth check failed", e);
+            }
         },
 
         async handleSubmit(e) {
@@ -152,12 +161,12 @@ const App = {
             const email = document.getElementById('email').value;
 
             const endpoint = this.mode === 'login' ? 'api/auth/login' : 'api/auth/register';
-            const body = { username, password, email: this.mode === 'register' ? email : undefined };
+            const body = {username, password, email: this.mode === 'register' ? email : undefined};
 
             try {
                 const res = await fetch(endpoint, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(body)
                 });
                 if (res.ok) {
@@ -166,11 +175,13 @@ const App = {
                 } else {
                     alert("Lỗi: " + await res.text());
                 }
-            } catch (e) { alert("Lỗi kết nối server"); }
+            } catch (e) {
+                alert("Lỗi kết nối server");
+            }
         },
 
         async logout() {
-            await fetch('api/auth/logout', { method: 'POST' });
+            await fetch('api/auth/logout', {method: 'POST'});
             this.onLogoutSuccess();
         },
 
@@ -186,7 +197,7 @@ const App = {
 
             // Ẩn hiện tính năng Admin
             const adminOpt = document.getElementById('opt-admin-all');
-            if(adminOpt) adminOpt.style.display = (user.role === 'ADMIN') ? 'block' : 'none';
+            if (adminOpt) adminOpt.style.display = (user.role === 'ADMIN') ? 'block' : 'none';
 
             this.closeModal();
 
@@ -208,7 +219,9 @@ const App = {
             App.Sidebar.render();
         },
 
-        togglePopup() { document.getElementById('user-popup').classList.toggle('active'); },
+        togglePopup() {
+            document.getElementById('user-popup').classList.toggle('active');
+        },
 
         showModal(mode) {
             this.mode = mode;
@@ -224,18 +237,22 @@ const App = {
             if (mode === 'login') {
                 title.innerText = 'Đăng Nhập';
                 emailIn.style.display = 'none';
-                if(switchTxt) switchTxt.innerText = 'Chưa có tài khoản?';
-                if(switchLink) switchLink.innerText = 'Đăng ký ngay';
+                if (switchTxt) switchTxt.innerText = 'Chưa có tài khoản?';
+                if (switchLink) switchLink.innerText = 'Đăng ký ngay';
             } else {
                 title.innerText = 'Đăng Ký';
                 emailIn.style.display = 'block';
-                if(switchTxt) switchTxt.innerText = 'Đã có tài khoản?';
-                if(switchLink) switchLink.innerText = 'Đăng nhập';
+                if (switchTxt) switchTxt.innerText = 'Đã có tài khoản?';
+                if (switchLink) switchLink.innerText = 'Đăng nhập';
             }
         },
 
-        closeModal() { document.getElementById('auth-modal').classList.remove('active'); },
-        switchMode() { this.showModal(this.mode === 'login' ? 'register' : 'login'); }
+        closeModal() {
+            document.getElementById('auth-modal').classList.remove('active');
+        },
+        switchMode() {
+            this.showModal(this.mode === 'login' ? 'register' : 'login');
+        }
     },
 
     //SIDEBAR (Menu, Kệ sách, Tab)
@@ -288,8 +305,8 @@ const App = {
             this.renderShelf('album-shelf-default', this.getUniqueAlbums(App.state.songs), 'album');
 
             // Render User
-            this.renderShelf('bg-shelf-user', App.state.userBackgrounds, 'background', true);
-            this.renderShelf('album-shelf-user', App.state.userAlbums, 'album', true);
+            this.renderShelf('bg-shelf-user', App.state.userBackgrounds || [], 'background', true);
+            this.renderShelf('album-shelf-user', App.state.userAlbums || [], 'album', true);
         },
 
         // Hàm Render Generic
@@ -297,13 +314,7 @@ const App = {
             const container = document.getElementById(containerId);
             if (!container) return;
 
-            // Xóa items cũ, giữ lại nút "Add New"
-            if (isUserShelf) {
-                const items = container.querySelectorAll('.shelf-item:not(.add-new)');
-                items.forEach(i => i.remove());
-            } else {
-                container.innerHTML = '';
-            }
+            container.innerHTML = '';
 
             if (!dataList) return;
 
@@ -337,11 +348,27 @@ const App = {
 
             // Chèn vào DOM
             if (isUserShelf) {
-                const addBtn = container.querySelector('.add-new');
-                addBtn ? container.insertBefore(fragment, addBtn) : container.appendChild(fragment);
+                const addBtn = this.createAddButton(type);
+                fragment.appendChild(addBtn);
+                container.appendChild(fragment);
             } else {
                 container.appendChild(fragment);
             }
+        },
+
+        createAddButton(type) {
+            const div = document.createElement('div');
+            div.className = 'shelf-item add-new';
+
+            const iconClass = 'fa-plus';
+
+            div.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
+
+            div.onclick = () => {
+                this.handleUploadClick(type);
+            };
+
+            return div;
         },
 
         getUniqueAlbums(songs) {
@@ -355,7 +382,75 @@ const App = {
                 }
             });
             return unique;
-        }
+        },
+
+        handleUploadClick(type) {
+
+            if (!App.Auth.currentUser) {
+                App.Auth.showModal('login');
+                return;
+            }
+
+            // Tìm input file ẩn trên giao diện
+            const fileInput = document.getElementById('upload-input');
+            if (!fileInput) return;
+
+            // Reset giá trị để nếu chọn lại file cũ vẫn kích hoạt sự kiện change
+            fileInput.value = '';
+
+            // Mở hộp thoại chọn file của trình duyệt
+            fileInput.click();
+
+            // Xử lý khi người dùng chọn xong file
+            fileInput.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                // Kiểm tra type (chỉ xử lý background ở bước này)
+                if (type !== 'background') {
+                    alert("Hiện tại chỉ hỗ trợ upload Background.");
+                    return;
+                }
+
+                // Chuẩn bị dữ liệu gửi đi
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    // Gọi API
+                    const response = await fetch('api/upload-background', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        const newBgData = await response.json();
+
+                        // 1. Cập nhật vào mảng dữ liệu của App
+                        this.state.userBackgrounds.push(newBgData);
+
+                        // 2. Render lại kệ "Của bạn" để thấy ảnh mới
+                        this.renderListToShelf('bg-shelf-user', this.state.userBackgrounds, 'background', true);
+
+                        // 3. Tự động đổi nền sang ảnh vừa up cho ngầu
+                        const ctx = window.CURRENT_CONTEXT || '';
+                        // Regex để xử lý đường dẫn sạch sẽ
+                        const fullPath = `${ctx}/${this.config.backgroundBaseUrl}${newBgData.name}`.replace(/([^:]\/)\/+/g, "$1");
+
+                        this.changeBackgroundDirect(fullPath);
+
+                        console.log("Upload thành công:", newBgData);
+                    } else {
+                        const err = await response.text();
+                        console.error("Lỗi server:", err);
+                        alert("Upload thất bại!");
+                    }
+                } catch (error) {
+                    console.error("Lỗi mạng:", error);
+                    alert("Có lỗi xảy ra khi kết nối server.");
+                }
+            };
+        },
     },
     // PLAYER & LOGIC KHÁC
     startClock() {
@@ -368,7 +463,8 @@ const App = {
             const clock = document.getElementById('clock');
             if (clock) clock.innerHTML = `${hours}:${minutes} <span style="font-size: 0.5em; vertical-align: middle;">${ampm}</span>`;
         };
-        setInterval(update, 1000); update();
+        setInterval(update, 1000);
+        update();
     },
 
     setupMainPlayer() {
@@ -388,9 +484,9 @@ const App = {
         const playBtn = document.querySelector('.play-pause-btn');
         if (this.state.isPlaying) {
             this.state.mainAudio.play();
-            if(playBtn) playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            if (playBtn) playBtn.innerHTML = '<i class="fas fa-pause"></i>';
         } else {
-            if(playBtn) playBtn.innerHTML = '<i class="fas fa-play"></i>';
+            if (playBtn) playBtn.innerHTML = '<i class="fas fa-play"></i>';
         }
     },
 
@@ -400,8 +496,8 @@ const App = {
 
         const titleEl = document.querySelector('.song-details .title');
         const artistEl = document.querySelector('.song-details .artist');
-        if(titleEl) titleEl.innerText = song.title;
-        if(artistEl) artistEl.innerText = song.artist;
+        if (titleEl) titleEl.innerText = song.title;
+        if (artistEl) artistEl.innerText = song.artist;
 
         // Xử lý ảnh cover
         const rawCover = song.coverImage || song.cover;
@@ -441,8 +537,8 @@ const App = {
         };
         const nextBtn = document.querySelector('.next-btn');
         const prevBtn = document.querySelector('.prev-btn');
-        if(nextBtn) nextBtn.onclick = () => this.nextSong();
-        if(prevBtn) prevBtn.onclick = () => this.prevSong();
+        if (nextBtn) nextBtn.onclick = () => this.nextSong();
+        if (prevBtn) prevBtn.onclick = () => this.prevSong();
 
         // Ambient Sound Controls
         document.addEventListener('input', (e) => {
@@ -463,7 +559,8 @@ const App = {
         container.innerHTML = '';
         this.state.sounds.forEach(sound => {
             const audio = new Audio(App.utils.resolvePath(sound.filePath));
-            audio.loop = true; audio.volume = 0;
+            audio.loop = true;
+            audio.volume = 0;
             this.state.ambientAudios[sound.id] = audio;
 
             const div = document.createElement('div');
@@ -481,12 +578,18 @@ const App = {
         const slider = document.getElementById('progress-slider');
         const curEl = document.querySelector('.current-time');
         const durEl = document.querySelector('.duration');
-        if(!slider) return;
+        if (!slider) return;
 
-        const fmt = (s) => { const m=Math.floor(s/60), sec=Math.floor(s%60); return `${m}:${sec<10?'0':''}${sec}`; };
+        const fmt = (s) => {
+            const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+            return `${m}:${sec < 10 ? '0' : ''}${sec}`;
+        };
 
         audio.addEventListener('loadedmetadata', () => {
-            if(isFinite(audio.duration)) { slider.max = audio.duration; durEl.innerText = fmt(audio.duration); }
+            if (isFinite(audio.duration)) {
+                slider.max = audio.duration;
+                durEl.innerText = fmt(audio.duration);
+            }
         });
         audio.addEventListener('timeupdate', () => {
             slider.value = audio.currentTime;
@@ -498,16 +601,16 @@ const App = {
     setupVolumeControl() {
         const slider = document.getElementById('volume-slider');
         const icon = document.getElementById('volume-icon');
-        if(!slider) return;
+        if (!slider) return;
         const updateIcon = (v) => {
-            icon.className = 'fa-solid ' + (v===0 ? 'fa-volume-mute' : v<0.5 ? 'fa-volume-low' : 'fa-volume-high');
+            icon.className = 'fa-solid ' + (v === 0 ? 'fa-volume-mute' : v < 0.5 ? 'fa-volume-low' : 'fa-volume-high');
         };
         slider.addEventListener('input', (e) => {
             this.state.mainAudio.volume = e.target.value;
             updateIcon(parseFloat(e.target.value));
         });
         icon.addEventListener('click', () => {
-            if(this.state.mainAudio.volume > 0) {
+            if (this.state.mainAudio.volume > 0) {
                 this.savedVol = this.state.mainAudio.volume;
                 this.state.mainAudio.volume = 0;
                 slider.value = 0;
@@ -532,7 +635,9 @@ const App = {
         const bgContainer = document.getElementById('background-container');
         if (bgContainer) {
             const img = new Image();
-            img.onload = () => { bgContainer.style.backgroundImage = `url('${path}')`; };
+            img.onload = () => {
+                bgContainer.style.backgroundImage = `url('${path}')`;
+            };
             img.src = path;
         }
     },

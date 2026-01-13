@@ -94,9 +94,6 @@
             <div class="shelf-section">
                 <h3 class="shelf-title">Của bạn</h3>
                 <div class="shelf-scroll" id="bg-shelf-user">
-                    <div class="shelf-item add-new">
-                        <i class="fa-solid fa-plus"></i>
-                    </div>
                 </div>
             </div>
 
@@ -112,9 +109,6 @@
             <div class="shelf-section">
                 <h3 class="shelf-title">Album của bạn</h3>
                 <div class="shelf-scroll" id="album-shelf-user">
-                    <div class="shelf-item add-new">
-                        <i class="fa-solid fa-plus"></i>
-                    </div>
                 </div>
             </div>
 
