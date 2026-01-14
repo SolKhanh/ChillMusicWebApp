@@ -75,14 +75,12 @@ const App = {
             const urlSounds = this.utils.resolvePath(this.config.apiSounds);
             const urlBgs = this.utils.resolvePath(this.config.apiBackgrounds);
 
-            console.log("Fetching from:", urlSongs);
-
             const [songs, sounds, bgs] = await Promise.all([
                 fetch(urlSongs).then(r => {
                     if (!r.ok) throw new Error(`Songs API error: ${r.status}`);
                     return r.json();
                 }),
-                fetch(urlSounds).then(r => r.json().catch(() => [])), // Catch lỗi nhẹ để không chết app
+                fetch(urlSounds).then(r => r.json().catch(() => [])),
                 fetch(urlBgs).then(r => r.json().catch(() => []))
             ]);
 
@@ -191,7 +189,7 @@ const App = {
             try {
                 const res = await fetch(endpoint, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                     body: params
                 });
 
@@ -206,9 +204,9 @@ const App = {
                 }
 
                 if (res.ok && data.status === 'success') {
-                    if(this.mode === 'login'){
+                    if (this.mode === 'login') {
                         this.onLoginSuccess(data);
-                    }else {
+                    } else {
                         alert("Đăng ký thành công! Vui lòng đăng nhập.");
                         this.switchMode();
                     }
@@ -236,10 +234,10 @@ const App = {
             const userView = document.getElementById('user-view');
             const nameDisplay = document.getElementById('display-username');
 
-            if(dot) dot.style.display = 'block';
-            if(guestView) guestView.style.display = 'none';
-            if(userView) userView.style.display = 'block';
-            if(nameDisplay) nameDisplay.innerText = user.username;
+            if (dot) dot.style.display = 'block';
+            if (guestView) guestView.style.display = 'none';
+            if (userView) userView.style.display = 'block';
+            if (nameDisplay) nameDisplay.innerText = user.username;
 
             const adminOpt = document.getElementById('opt-admin-all');
             if (adminOpt) adminOpt.style.display = (user.role === 'ADMIN') ? 'block' : 'none';
@@ -256,9 +254,9 @@ const App = {
             const guestView = document.getElementById('guest-view');
             const userView = document.getElementById('user-view');
 
-            if(dot) dot.style.display = 'none';
-            if(guestView) guestView.style.display = 'block';
-            if(userView) userView.style.display = 'none';
+            if (dot) dot.style.display = 'none';
+            if (guestView) guestView.style.display = 'block';
+            if (userView) userView.style.display = 'none';
 
             App.state.userBackgrounds = [];
             App.state.userAlbums = [];
@@ -267,7 +265,7 @@ const App = {
 
         togglePopup() {
             const popup = document.getElementById('user-popup');
-            if(popup) popup.classList.toggle('active');
+            if (popup) popup.classList.toggle('active');
         },
 
         showModal(mode) {
@@ -277,16 +275,16 @@ const App = {
             const switchTxt = document.getElementById('switch-auth-text');
             const switchLink = document.getElementById('switch-auth-link');
 
-            if(modal) modal.classList.add('active');
+            if (modal) modal.classList.add('active');
             const popup = document.getElementById('user-popup');
-            if(popup) popup.classList.remove('active');
+            if (popup) popup.classList.remove('active');
 
             if (mode === 'login') {
-                if(title) title.innerText = 'Đăng Nhập';
+                if (title) title.innerText = 'Đăng Nhập';
                 if (switchTxt) switchTxt.innerText = 'Chưa có tài khoản?';
                 if (switchLink) switchLink.innerText = 'Đăng ký ngay';
             } else {
-                if(title) title.innerText = 'Đăng Ký';
+                if (title) title.innerText = 'Đăng Ký';
                 if (switchTxt) switchTxt.innerText = 'Đã có tài khoản?';
                 if (switchLink) switchLink.innerText = 'Đăng nhập';
             }
@@ -294,7 +292,7 @@ const App = {
 
         closeModal() {
             const modal = document.getElementById('auth-modal');
-            if(modal) modal.classList.remove('active');
+            if (modal) modal.classList.remove('active');
         },
         switchMode() {
             this.showModal(this.mode === 'login' ? 'register' : 'login');
@@ -313,8 +311,8 @@ const App = {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('overlay');
             const toggle = (show) => {
-                if(sidebar) sidebar.classList.toggle('active', show);
-                if(overlay) overlay.classList.toggle('active', show);
+                if (sidebar) sidebar.classList.toggle('active', show);
+                if (overlay) overlay.classList.toggle('active', show);
             };
 
             const menuBtn = document.querySelector('.menu-container') || document.getElementById('menu-btn');
@@ -340,36 +338,49 @@ const App = {
         async loadUserContent() {
             if (!App.Auth.currentUser) {
                 App.state.userAlbums = [];
+                App.state.userBackgrounds = [];
+                App.state.collections = [];
                 this.render();
                 return;
             }
 
             try {
-                // SỬA: dùng resolvePath
                 const endpoint = App.utils.resolvePath('api/collections');
                 const res = await fetch(endpoint);
                 if (res.ok) {
                     const data = await res.json();
                     if (data.status === 'success') {
-                        const myCols = data.myCollections.map(c => ({
-                            id: c.id,
-                            title: c.name,
-                            artist: 'My Collection',
-                            cover: 'assets/img/covers/cover.jpg',
-                            shareCode: c.shareCode,
-                            type: 'OWNER'
-                        }));
+                        const rawMyCols = data.myCollections.map(c => ({...c, type: 'OWNER'}));
+                        const rawFollowedCols = data.followedCollections.map(c => ({...c, type: 'SUBSCRIBER'}));
 
-                        const followedCols = data.followedCollections.map(c => ({
-                            id: c.id,
-                            title: c.name,
-                            artist: 'Followed',
-                            cover: 'assets/img/covers/cover.jpg',
-                            shareCode: c.shareCode,
-                            type: 'SUBSCRIBER'
-                        }));
+                        App.state.collections = [...rawMyCols, ...rawFollowedCols];
 
-                        App.state.userAlbums = [...myCols, ...followedCols];
+                        let allUserBgs = [];
+                        App.state.collections.forEach(col => {
+                            if (col.backgrounds && Array.isArray(col.backgrounds)) {
+                                allUserBgs = [...allUserBgs, ...col.backgrounds];
+                            }
+                        });
+
+                        App.state.userBackgrounds = allUserBgs;
+
+                        const mapToAlbumUI = (col) => ({
+                            id: col.id,
+                            title: col.name,
+                            artist: col.type === 'OWNER' ? 'My Collection' : 'Followed',
+                            cover: (col.songs && col.songs.length > 0 && col.songs[0].cover)
+                                ? col.songs[0].cover
+                                : 'assets/img/covers/cover.jpg',
+                            shareCode: col.shareCode,
+                            type: col.type,
+                            songs: col.songs || []
+                        });
+
+                        const myColsUI = rawMyCols.map(mapToAlbumUI);
+                        const followedColsUI = rawFollowedCols.map(mapToAlbumUI);
+
+                        App.state.userAlbums = [...myColsUI, ...followedColsUI];
+
                         this.render();
                     }
                 }
@@ -411,10 +422,21 @@ const App = {
                         }
                     };
                 } else if (type === 'album') {
-                    // SỬA: dùng resolvePath cho ảnh cover
                     const src = App.utils.resolvePath(item.coverImage || item.cover);
                     div.innerHTML = `<img src="${src}" loading="lazy" alt="album">`;
-                    div.onclick = () => App.loadSong(item.originalIndex);
+                    div.onclick = () => {
+                        if (isUserShelf) {
+                            if (item.songs && item.songs.length > 0) {
+                                App.state.songs = item.songs;
+                                App.loadSong(0);
+                                console.log("Đang chơi collection:", item.title);
+                            } else {
+                                alert("Bộ sưu tập này chưa có bài hát nào!");
+                            }
+                        } else {
+                            App.loadSong(item.originalIndex);
+                        }
+                    };
                 }
 
                 fragment.appendChild(div);
@@ -431,7 +453,7 @@ const App = {
             const div = document.createElement('div');
             div.className = 'shelf-item add-new';
             div.innerHTML = `<i class="fa-solid fa-plus"></i>`;
-            div.onclick = () => this.handleUploadClick(type);
+            div.onclick = () => this.handleUploadClick(type, null);
             return div;
         },
 
@@ -448,11 +470,41 @@ const App = {
             return unique;
         },
 
-        handleUploadClick(type) {
+        handleUploadClick(type, collectionId = null) {
             if (!App.Auth.currentUser) {
                 App.Auth.showModal('login');
                 return;
             }
+
+            if (!collectionId) {
+                const myCollections = App.state.collections.filter(c => c.type === 'OWNER');
+
+                if (myCollections.length === 0) {
+                    alert("Bạn chưa có Bộ sưu tập nào. Vui lòng tạo Collection trước khi upload.");
+                    return;
+                }
+                if (myCollections.length === 1) {
+                    collectionId = myCollections[0].id;
+                } else {
+                    let msg = "Nhập ID Bộ sưu tập bạn muốn upload vào:\n";
+                    myCollections.forEach(c => {
+                        msg += `[ID: ${c.id}] - ${c.name}\n`;
+                    });
+
+                    const input = prompt(msg);
+                    if (!input) return;
+
+                    const selectedId = parseInt(input);
+                    const exists = myCollections.some(c => c.id === selectedId);
+
+                    if (!exists) {
+                        alert("ID không hợp lệ hoặc bạn không sở hữu bộ sưu tập này!");
+                        return;
+                    }
+                    collectionId = selectedId;
+                }
+            }
+
             const fileInput = document.getElementById('upload-input');
             if (!fileInput) return;
 
@@ -463,39 +515,86 @@ const App = {
                 const file = e.target.files[0];
                 if (!file) return;
 
-                if (type !== 'background') {
-                    alert("Hiện tại chỉ hỗ trợ upload Background.");
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('collectionId', collectionId);
+
+                let endpointPath = '';
+                if (type === 'background') {
+                    endpointPath = 'api/upload/background';
+                } else if (type === 'song') {
+                    const defaultTitle = file.name.replace(/\.[^/.]+$/, "");
+                    const title = prompt("Nhập tên bài hát:", defaultTitle) || defaultTitle;
+                    const artist = prompt("Nhập tên nghệ sĩ:", "Unknown") || "Unknown";
+
+                    formData.append('title', title);
+                    formData.append('artist', artist);
+
+                    endpointPath = 'api/upload/song';
+                } else {
+                    alert("Loại upload không hỗ trợ");
                     return;
                 }
 
-                const formData = new FormData();
-                formData.append('file', file);
-
                 try {
-                    // SỬA: dùng resolvePath
-                    const endpoint = App.utils.resolvePath('api/upload-background');
+                    const endpoint = App.utils.resolvePath(endpointPath);
                     const response = await fetch(endpoint, {
                         method: 'POST',
                         body: formData
                     });
 
-                    if (response.ok) {
-                        const newBgData = await response.json();
-                        this.state.userBackgrounds.push(newBgData);
-                        this.renderListToShelf('bg-shelf-user', this.state.userBackgrounds, 'background', true);
+                    const data = await response.json();
 
-                        const fullPath = App.utils.resolvePath(this.config.backgroundBaseUrl + newBgData.name);
-                        this.changeBackgroundDirect(fullPath);
+                    if (response.ok && data.status === 'success') {
+
+                        const targetCollection = App.state.collections.find(c => c.id === collectionId);
+
+                        if (type === 'background') {
+                            const newBg = {
+                                id: data.id,
+                                name: data.fileName,
+                                isAnimated: false
+                            };
+
+                            if (!targetCollection.backgrounds) targetCollection.backgrounds = [];
+                            targetCollection.backgrounds.push(newBg);
+
+                            App.state.userBackgrounds.push(newBg);
+
+                            alert("Upload thành công!");
+                        } else if (type === 'song') {
+                            const newSong = {
+                                id: data.id,
+                                title: songTitle,
+                                artist: songArtist,
+                                filePath: data.filePath,
+                                cover: 'assets/img/covers/cover.jpg'
+                            };
+
+                            if (!targetCollection.songs) targetCollection.songs = [];
+                            targetCollection.songs.push(newSong);
+
+                            const uiAlbum = App.state.userAlbums.find(a => a.id === collectionId);
+                            if (uiAlbum) {
+                                if (!uiAlbum.songs) uiAlbum.songs = [];
+                                uiAlbum.songs.push(newSong);
+                            }
+
+                            alert("Upload nhạc thành công!");
+                        }
+
+                        this.render();
                     } else {
-                        alert("Upload thất bại!");
+                        alert("Upload thất bại: " + (data.message || 'Lỗi server'));
                     }
                 } catch (error) {
+                    console.error(error);
                     alert("Có lỗi xảy ra khi kết nối server.");
                 }
             };
+
         },
     },
-
     // PLAYER & LOGIC KHÁC
     startClock() {
         const update = () => {
@@ -688,6 +787,6 @@ const App = {
         if (this.state.bgTimerId) clearInterval(this.state.bgTimerId);
         this.state.bgTimerId = setInterval(() => this.changeBackground(), this.state.bgIntervalTime);
     }
-};
 
+}
 document.addEventListener('DOMContentLoaded', () => App.init());

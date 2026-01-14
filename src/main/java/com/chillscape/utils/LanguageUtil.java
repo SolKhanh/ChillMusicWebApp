@@ -14,7 +14,7 @@ public class LanguageUtil {
 
         String langParam = req.getParameter("lang");
         if (langParam != null && langParam.equals("en")) {
-            locale = Locale.ENGLISH;
+            locale = new Locale("en", "GB");
         } else if (langParam != null && langParam.equals("vi")) {
             locale = new Locale("vi", "VN");
         }

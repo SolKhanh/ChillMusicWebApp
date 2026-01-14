@@ -1,6 +1,8 @@
 package com.chillscape.controller;
 
+import com.chillscape.dao.BackgroundDAO;
 import com.chillscape.dao.CollectionDAO;
+import com.chillscape.dao.SongDAO;
 import com.chillscape.utils.LanguageUtil;
 import com.google.gson.Gson;
 
@@ -19,6 +21,8 @@ import java.util.Map;
 @WebServlet("/api/collections/*")
 public class CollectionServlet extends HttpServlet {
     private static final CollectionDAO collectionDAO = new CollectionDAO();
+    private static final SongDAO songDAO = new SongDAO();
+    private static final BackgroundDAO backgroundDAO = new BackgroundDAO();
     private static final Gson gson = new Gson();
 
     @Override
@@ -130,13 +134,22 @@ public class CollectionServlet extends HttpServlet {
                 List<Map<String, Object>> myCols = collectionDAO.getMyCollections(userId);
                 List<Map<String, Object>> followedCols = collectionDAO.getFollowedCollections(userId);
 
+                for (Map<String, Object> collection : myCols) {
+                    int colId = (int) collection.get("id");
+                    collection.put("songs", songDAO.getSongsByCollectionId(colId));
+                    collection.put("backgrounds", backgroundDAO.getBackgroundsByCollectionId(colId));
+                }
+
+                for (Map<String, Object> collection : followedCols) {
+                    int colId = (int) collection.get("id"); // Lưu ý: key id phải khớp với DAO trả về
+                    collection.put("songs", songDAO.getSongsByCollectionId(colId));
+                    collection.put("backgrounds", backgroundDAO.getBackgroundsByCollectionId(colId));
+                }
+
                 responseData.put("status", "success");
                 responseData.put("myCollections", myCols);
                 responseData.put("followedCollections", followedCols);
-            }
-            // Có thể mở rộng thêm logic lấy chi tiết 1 collection: /api/collections/123
-            // else if (pathInfo matches logic) { ... }
-            else {
+            } else {
                 resp.setStatus(404);
                 responseData.put("message", "Not found");
             }
