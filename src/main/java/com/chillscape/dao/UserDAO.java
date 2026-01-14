@@ -10,7 +10,7 @@ public class UserDAO {
     private final CollectionDAO collectionDAO = new CollectionDAO();
 
 
-    public boolean register(User user) throws SQLException {
+    public boolean register(User user) {
         String sql = "INSERT INTO users (username, password, role) VALUES (?, ?, ?)";
 
         String salt = PasswordUtil.getSalt();
@@ -35,10 +35,14 @@ public class UserDAO {
                     return false;
                 }
             }
+        } catch (SQLException e) {
+            System.err.println("Error creating user: " + e.getMessage());
+            e.printStackTrace();
+            return false;
         }
     }
 
-    public User login(String username, String rawPassword) throws SQLException {
+    public User login(String username, String rawPassword) {
         String sql = "SELECT * FROM users WHERE username = ?";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -55,7 +59,7 @@ public class UserDAO {
                         String hashedRawPassword = PasswordUtil.hashPassword(rawPassword, salt);
 
                         if (hashedPassword.equals(hashedRawPassword)) {
-                            return new User(rs.getInt("id"), username, null);
+                            return new User(rs.getInt("id"), username, null, rs.getString("role"));
                         }
                     }
                 }
