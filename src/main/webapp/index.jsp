@@ -57,14 +57,13 @@
         <form id="auth-form">
             <input type="text" id="username" placeholder="Tên đăng nhập" required>
             <input type="password" id="password" placeholder="Mật khẩu" required>
-            <input type="email" id="email" placeholder="Email" style="display:none;">
 
             <button type="submit" class="submit-btn">Xác nhận</button>
         </form>
 
         <p style="margin-top: 15px; font-size: 0.9em; color: #aaa;">
             <span id="switch-auth-text">Chưa có tài khoản?</span>
-            <a href="#" id="link-switch-auth">Đăng ký ngay</a>
+            <a href="#" id="switch-auth-link">Đăng ký ngay</a>
         </p>
     </div>
 </div>
