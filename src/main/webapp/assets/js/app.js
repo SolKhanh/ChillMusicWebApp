@@ -27,7 +27,7 @@ const App = {
 
         // State User
         userBackgrounds: [],
-        userAlbums: [],
+        userPlaylists: [],
         collections: []
     },
 
@@ -259,7 +259,7 @@ const App = {
             if (userView) userView.style.display = 'none';
 
             App.state.userBackgrounds = [];
-            App.state.userAlbums = [];
+            App.state.userPlaylists = [];
             App.Sidebar.render();
         },
 
@@ -337,7 +337,7 @@ const App = {
 
         async loadUserContent() {
             if (!App.Auth.currentUser) {
-                App.state.userAlbums = [];
+                App.state.userPlaylists = [];
                 App.state.userBackgrounds = [];
                 App.state.collections = [];
                 this.render();
@@ -364,7 +364,7 @@ const App = {
 
                         App.state.userBackgrounds = allUserBgs;
 
-                        const mapToAlbumUI = (col) => ({
+                        const mapToPlaylistUI = (col) => ({
                             id: col.id,
                             title: col.name,
                             artist: col.type === 'OWNER' ? 'My Collection' : 'Followed',
@@ -376,10 +376,10 @@ const App = {
                             songs: col.songs || []
                         });
 
-                        const myColsUI = rawMyCols.map(mapToAlbumUI);
-                        const followedColsUI = rawFollowedCols.map(mapToAlbumUI);
+                        const myColsUI = rawMyCols.map(mapToPlaylistUI);
+                        const followedColsUI = rawFollowedCols.map(mapToPlaylistUI);
 
-                        App.state.userAlbums = [...myColsUI, ...followedColsUI];
+                        App.state.userPlaylists = [...myColsUI, ...followedColsUI];
 
                         this.render();
                     }
@@ -391,9 +391,9 @@ const App = {
 
         render() {
             this.renderShelf('bg-shelf-default', App.state.backgrounds, 'background');
-            this.renderShelf('album-shelf-default', this.getUniqueAlbums(App.state.songs), 'album');
+            this.renderShelf('playlist-shelf-default', this.getUniquePlaylists(App.state.songs), 'playlist');
             this.renderShelf('bg-shelf-user', App.state.userBackgrounds || [], 'background', true);
-            this.renderShelf('album-shelf-user', App.state.userAlbums || [], 'album', true);
+            this.renderShelf('playlist-shelf-user', App.state.userPlaylists || [], 'playlist', true);
         },
 
         renderShelf(containerId, dataList, type, isUserShelf = false) {
@@ -410,7 +410,6 @@ const App = {
                 div.className = 'shelf-item';
 
                 if (type === 'background') {
-                    // SỬA: dùng resolvePath cho ảnh
                     const src = App.utils.resolvePath(App.config.backgroundBaseUrl + (item.name || item));
                     div.innerHTML = `<img src="${src}" loading="lazy" alt="bg">`;
                     div.onclick = () => {
@@ -421,9 +420,9 @@ const App = {
                             App.startBackgroundSlideshow();
                         }
                     };
-                } else if (type === 'album') {
+                } else if (type === 'playlist') {
                     const src = App.utils.resolvePath(item.coverImage || item.cover);
-                    div.innerHTML = `<img src="${src}" loading="lazy" alt="album">`;
+                    div.innerHTML = `<img src="${src}" loading="lazy" alt="playlist">`;
                     div.onclick = () => {
                         if (isUserShelf) {
                             if (item.songs && item.songs.length > 0) {
@@ -457,10 +456,11 @@ const App = {
             return div;
         },
 
-        getUniqueAlbums(songs) {
+        getUniquePlaylists(songs) {
             const unique = [];
             const seen = new Set();
             songs.forEach((song, idx) => {
+
                 const key = song.album || song.title;
                 if (!seen.has(key)) {
                     seen.add(key);
@@ -565,8 +565,8 @@ const App = {
                         } else if (type === 'song') {
                             const newSong = {
                                 id: data.id,
-                                title: songTitle,
-                                artist: songArtist,
+                                title: title,
+                                artist: artist,
                                 filePath: data.filePath,
                                 cover: 'assets/img/covers/cover.jpg'
                             };
@@ -574,10 +574,10 @@ const App = {
                             if (!targetCollection.songs) targetCollection.songs = [];
                             targetCollection.songs.push(newSong);
 
-                            const uiAlbum = App.state.userAlbums.find(a => a.id === collectionId);
-                            if (uiAlbum) {
-                                if (!uiAlbum.songs) uiAlbum.songs = [];
-                                uiAlbum.songs.push(newSong);
+                            const uiPlaylist = App.state.userPlaylists.find(a => a.id === collectionId);
+                            if (uiPlaylist) {
+                                if (!uiPlaylist.songs) uiPlaylist.songs = [];
+                                uiPlaylist.songs.push(newSong);
                             }
 
                             alert("Upload nhạc thành công!");
@@ -620,7 +620,6 @@ const App = {
         const song = this.state.songs[index];
         if (!song) return;
 
-        // SỬA: dùng resolvePath cho file nhạc
         this.state.mainAudio.src = App.utils.resolvePath(song.filePath);
         this.updateSongUI();
 
@@ -698,7 +697,6 @@ const App = {
         if (!container) return;
         container.innerHTML = '';
         this.state.sounds.forEach(sound => {
-            // SỬA: dùng resolvePath cho âm thanh môi trường
             const audio = new Audio(App.utils.resolvePath(sound.filePath));
             audio.loop = true;
             audio.volume = 0;

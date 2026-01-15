@@ -6,7 +6,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chillscape</title>
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
           integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA=="
           crossorigin="anonymous" referrerpolicy="no-referrer"/>
@@ -78,7 +77,7 @@
 
     <div class="sidebar-tabs">
         <button class="tab-btn active" data-tab="backgrounds">Backgrounds</button>
-        <button class="tab-btn" data-tab="albums">Albums</button>
+        <button class="tab-btn" data-tab="playlists">Playlists</button>
     </div>
 
     <div class="sidebar-content">
@@ -98,16 +97,16 @@
 
         </div>
 
-        <div id="tab-albums" class="tab-pane">
+        <div id="tab-playlists" class="tab-pane">
 
             <div class="shelf-section">
-                <h3 class="shelf-title">Album gợi ý</h3>
-                <div class="shelf-scroll" id="album-shelf-default"></div>
+                <h3 class="shelf-title">Playlist gợi ý</h3>
+                <div class="shelf-scroll" id="playlist-shelf-default"></div>
             </div>
 
             <div class="shelf-section">
-                <h3 class="shelf-title">Album của bạn</h3>
-                <div class="shelf-scroll" id="album-shelf-user">
+                <h3 class="shelf-title">Playlist của bạn</h3>
+                <div class="shelf-scroll" id="playlist-shelf-user">
                 </div>
             </div>
 
@@ -121,11 +120,10 @@
     <div id="clock" class="clock"></div>
 </div>
 <div id="ambient-sounds-panel" class="ambient-panel">
-    <!-- Nội dung sẽ được app.js tự động tạo ra -->
 </div>
 <div class="player-container">
     <div class="song-info">
-        <div class="vn-album-wrapper">
+        <div class="vn-playlist-wrapper">
             <div class="vn-cover">
                 <img src="${pageContext.request.contextPath}/assets/img/cover/cover.jpg" alt="Cover">
             </div>
