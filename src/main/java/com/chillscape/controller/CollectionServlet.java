@@ -141,7 +141,7 @@ public class CollectionServlet extends HttpServlet {
                 }
 
                 for (Map<String, Object> collection : followedCols) {
-                    int colId = (int) collection.get("id"); // Lưu ý: key id phải khớp với DAO trả về
+                    int colId = (int) collection.get("id");
                     collection.put("songs", songDAO.getSongsByCollectionId(colId));
                     collection.put("backgrounds", backgroundDAO.getBackgroundsByCollectionId(colId));
                 }
