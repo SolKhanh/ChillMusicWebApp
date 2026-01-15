@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 @WebServlet("/api/upload/*")
 @MultipartConfig(
@@ -55,12 +54,13 @@ public class UploadServlet extends HttpServlet {
             else if ("/song".equals(pathInfo)) handleUploadSong(req, responseData);
             else {
                 resp.setStatus(404);
-                responseData.put("message", "Endpoint not found");
+                responseData.put("message", LanguageUtil.getMessage(req, "error.endpoint.not_found"));
             }
         } catch (Exception e) {
             e.printStackTrace();
             resp.setStatus(500);
-            responseData.put("message", "Upload failed: " + e.getMessage());
+            String msg = e.getMessage() != null ? e.getMessage() : LanguageUtil.getMessage(req, "error.upload.failed");
+            responseData.put("message", msg);
         }
 
         out.print(gson.toJson(responseData));
@@ -78,19 +78,19 @@ public class UploadServlet extends HttpServlet {
             int colId = Integer.parseInt(collectionIdStr);
             backgroundDAO.addBackgroundToCollection(colId, newBgId);
             responseData.put("status", "success");
-            responseData.put("message", "Upload successful");
+            responseData.put("message", LanguageUtil.getMessage(req, "upload.success"));
             responseData.put("fileName", savedFileName);
         } else {
-            throw new IOException("DB Insert failed");
+            throw new IOException(LanguageUtil.getMessage(req, "error.db.save"));
         }
     }
 
     private void handleUploadSong(HttpServletRequest req, Map<String, Object> responseData) throws IOException, ServletException {
         String collectionIdStr = req.getParameter("collectionId");
-        if (collectionIdStr == null) throw new IOException("Missing collectionId");
+        if (collectionIdStr == null) throw new IOException(LanguageUtil.getMessage(req, "error.upload.missing_id"));
 
         Part songPart = req.getPart("file");
-        Part coverPart = req.getPart("cover"); // Nhận thêm file cover
+        Part coverPart = req.getPart("cover");
 
         String title = req.getParameter("title");
         String artist = req.getParameter("artist");
@@ -116,12 +116,17 @@ public class UploadServlet extends HttpServlet {
             boolean linked = songDAO.addSongToCollection(colId, newSongId);
             if (linked) {
                 responseData.put("status", "success");
-                responseData.put("message", "Upload successful");
+                responseData.put("message", LanguageUtil.getMessage(req, "upload.success"));
                 responseData.put("filePath", dbSongPath);
                 responseData.put("id", newSongId);
-            } else throw new IOException("Failed to link song");
-        } else throw new IOException("DB Insert failed");
+            } else {
+                throw new IOException(LanguageUtil.getMessage(req, "error.upload.link_failed"));
+            }
+        } else {
+            throw new IOException(LanguageUtil.getMessage(req, "error.db.save"));
+        }
     }
+
     private boolean isValidExtension(String filename, String type) {
         String ext = filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
         if ("audio".equals(type)) {
@@ -134,13 +139,13 @@ public class UploadServlet extends HttpServlet {
 
     private String saveFile(HttpServletRequest req, Part part, String targetDir) throws IOException {
         String submittedFileName = part.getSubmittedFileName();
-        if (submittedFileName == null || submittedFileName.isEmpty()) throw new IOException("File name empty");
+        if (submittedFileName == null || submittedFileName.isEmpty())
+            throw new IOException(LanguageUtil.getMessage(req, "error.file.name.empty"));
 
         // --- SECURITY CHECK ---
         String type = targetDir.contains("audio") ? "audio" : "image";
-        if (!isValidExtension(submittedFileName, type)) {
-            throw new IOException("Invalid file format! Allowed: mp3/wav for audio, jpg/png for images.");
-        }
+        if (!isValidExtension(submittedFileName, type))
+            throw new IOException(LanguageUtil.getMessage(req, "error.file.invalid_format"));
 
         String safeFileName = submittedFileName.replaceAll("\\s+", "_");
         String uniqueFileName = java.util.UUID.randomUUID().toString() + "_" + safeFileName;
@@ -153,5 +158,4 @@ public class UploadServlet extends HttpServlet {
         part.write(uploadFilePath + File.separator + uniqueFileName);
         return uniqueFileName;
     }
-
 }

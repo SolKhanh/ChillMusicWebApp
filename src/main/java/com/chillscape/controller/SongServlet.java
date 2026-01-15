@@ -2,6 +2,7 @@ package com.chillscape.controller;
 
 import com.chillscape.dao.SongDAO;
 import com.chillscape.model.Song;
+import com.chillscape.utils.LanguageUtil;
 import com.google.gson.Gson;
 
 import javax.servlet.ServletException;
@@ -31,7 +32,6 @@ public class SongServlet extends HttpServlet {
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
 
-        ResourceBundle bundle = ResourceBundle.getBundle("messages");
         try {
             List<Song> songs = songDAO.getDefaultSongs();
             String json = gson.toJson(songs);
@@ -41,7 +41,7 @@ public class SongServlet extends HttpServlet {
             out.flush();
         } catch (Exception e) {
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            String errorMsg = bundle.getString("error.fetch.songs");
+            String errorMsg = LanguageUtil.getMessage(req, "error.fetch.songs");
             resp.getWriter().write("{\"error\": \"" + errorMsg + "\"}");
             e.printStackTrace();
         }

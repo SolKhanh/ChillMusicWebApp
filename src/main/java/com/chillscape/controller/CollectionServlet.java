@@ -32,6 +32,8 @@ public class CollectionServlet extends HttpServlet {
         HttpSession session = req.getSession(false);
         if (session == null || session.getAttribute("userId") == null) {
             resp.setStatus(401);
+            responseData.put("message", LanguageUtil.getMessage(req, "auth.required"));
+            out.print(gson.toJson(responseData));
             return;
         }
 
@@ -51,6 +53,7 @@ public class CollectionServlet extends HttpServlet {
         } catch (Exception e) {
             e.printStackTrace();
             responseData.put("status", "error");
+            responseData.put("message", LanguageUtil.getMessage(req, "error.unknown"));
         }
         out.print(gson.toJson(responseData));
     }
@@ -64,7 +67,7 @@ public class CollectionServlet extends HttpServlet {
     // Tạo mới / Follow
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        req.setCharacterEncoding("UTF-8");
+        req.setCharacterEncoding("UTF-8"); // Đảm bảo hứng tên Collection tiếng Việt đúng
 
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
@@ -74,6 +77,7 @@ public class CollectionServlet extends HttpServlet {
         HttpSession session = req.getSession(false);
         if (session == null || session.getAttribute("userId") == null) {
             resp.setStatus(401);
+            responseData.put("message", LanguageUtil.getMessage(req, "auth.required"));
             out.print(gson.toJson(responseData));
             return;
         }
@@ -82,23 +86,37 @@ public class CollectionServlet extends HttpServlet {
 
         if ("/create".equals(pathInfo)) {
             String name = req.getParameter("name");
+            if (name == null || name.trim().isEmpty()) {
+                responseData.put("message", LanguageUtil.getMessage(req, "collection.create.name_required"));
+                out.print(gson.toJson(responseData));
+                return;
+            }
             if (collectionDAO.createCollection(userId, name)) {
                 responseData.put("status", "success");
+                responseData.put("message", LanguageUtil.getMessage(req, "collection.create.success"));
             } else {
-                responseData.put("message", "Create failed");
+                responseData.put("message", LanguageUtil.getMessage(req, "collection.create.fail"));
             }
         } else if ("/follow".equals(pathInfo)) {
             String code = req.getParameter("shareCode");
+            if (code == null || code.trim().isEmpty()) {
+                responseData.put("message", LanguageUtil.getMessage(req, "collection.follow.code_required"));
+                out.print(gson.toJson(responseData));
+                return;
+            }
             if (collectionDAO.subscribeCollection(userId, code)) {
                 responseData.put("status", "success");
+                responseData.put("message", LanguageUtil.getMessage(req, "collection.follow.success"));
             } else {
-                responseData.put("message", "Invalid code or already followed");
+                responseData.put("message", LanguageUtil.getMessage(req, "collection.follow.fail"));
             }
+        } else {
+            resp.setStatus(404);
+            responseData.put("message", LanguageUtil.getMessage(req, "error.endpoint.not_found"));
         }
         out.print(gson.toJson(responseData));
     }
 
-    //  Xóa bài hát/ảnh khỏi Collection
     @Override
     protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setContentType("application/json");
@@ -109,24 +127,31 @@ public class CollectionServlet extends HttpServlet {
         HttpSession session = req.getSession(false);
         if (session == null || session.getAttribute("userId") == null) {
             resp.setStatus(401);
+            // Trả về JSON lỗi 401 chuẩn
+            responseData.put("message", LanguageUtil.getMessage(req, "auth.required"));
+            out.print(gson.toJson(responseData));
             return;
         }
 
         int userId = (int) session.getAttribute("userId");
         String role = (String) session.getAttribute("role");
-        String pathInfo = req.getPathInfo(); // VD: /delete/background/5/12
+        String pathInfo = req.getPathInfo();
 
         try {
-            // PathInfo: /delete/type/colId/itemId
-            // split("/"): ["", "delete", "type", "colId", "itemId"]
+            // PathInfo expected: /delete/type/colId/itemId
+            if (pathInfo == null) throw new IllegalArgumentException();
             String[] parts = pathInfo.split("/");
 
-            //  lấy tham số từ URL
-            if (parts.length < 5) throw new IllegalArgumentException("Invalid path format");
+            //  Kiểm tra độ dài path
+            if (parts.length < 5) {
+                throw new IllegalArgumentException(LanguageUtil.getMessage(req, "error.path.invalid"));
+            }
 
             String action = parts[1]; // "delete"
             if (!"delete".equals(action)) {
                 resp.setStatus(404);
+                responseData.put("message", LanguageUtil.getMessage(req, "error.endpoint.not_found"));
+                out.print(gson.toJson(responseData));
                 return;
             }
 
@@ -136,11 +161,11 @@ public class CollectionServlet extends HttpServlet {
 
             //  Admin được xóa tất cả, User chỉ xóa của mình
             boolean isOwner = collectionDAO.isCollectionOwner(userId, colId);
-            boolean isAdmin = "ADMIN".equals(role);
+            boolean isAdmin = role != null && "ADMIN".equals(role);
 
             if (!isOwner && !isAdmin) {
                 resp.setStatus(403);
-                responseData.put("message", "Permission denied");
+                responseData.put("message", LanguageUtil.getMessage(req, "delete.permission_denied"));
             } else {
                 boolean success = false;
                 if ("song".equals(type)) {
@@ -149,14 +174,20 @@ public class CollectionServlet extends HttpServlet {
                     success = collectionDAO.removeBackgroundFromCollection(colId, itemId);
                 }
 
-                if (success) responseData.put("status", "success");
-                else responseData.put("message", "Delete failed (Item not found or DB error)");
+                if (success) {
+                    responseData.put("status", "success");
+                    responseData.put("message", LanguageUtil.getMessage(req, "delete.success"));
+                } else {
+                    responseData.put("message", LanguageUtil.getMessage(req, "delete.fail"));
+                }
             }
         } catch (NumberFormatException e) {
-            responseData.put("message", "Invalid ID format");
+            responseData.put("message", LanguageUtil.getMessage(req, "error.format.invalid_id"));
+        } catch (IllegalArgumentException e) {
+            responseData.put("message", e.getMessage() != null ? e.getMessage() : LanguageUtil.getMessage(req, "error.path.invalid"));
         } catch (Exception e) {
             e.printStackTrace();
-            responseData.put("message", e.getMessage());
+            responseData.put("message", LanguageUtil.getMessage(req, "error.unknown"));
         }
         out.print(gson.toJson(responseData));
     }

@@ -115,7 +115,7 @@
 
     <div class="sidebar-tabs">
         <button class="tab-btn active" data-tab="backgrounds">Backgrounds</button>
-        <button class="tab-btn" data-tab="albums">Albums</button>
+        <button class="tab-btn" data-tab="playlists">Albums</button>
     </div>
 
     <div class="sidebar-content">
@@ -128,10 +128,10 @@
             <div id="bg-container-subscriber"></div>
         </div>
 
-        <div id="tab-albums" class="tab-pane">
+        <div id="tab-playlists" class="tab-pane">
             <div class="shelf-section">
                 <h3 class="shelf-title">Hệ thống</h3>
-                <div class="shelf-grid shelf-scroll" id="album-shelf"></div>
+                <div class="shelf-grid shelf-scroll" id="playlist-shelf"></div>
             </div>
             <div id="playlist-container-owner"></div>
             <div id="playlist-container-subscriber"></div>
@@ -151,7 +151,7 @@
 <!-- Player -->
 <div class="player-container">
     <div class="song-info">
-        <div class="vn-album-wrapper">
+        <div class="vn-playlist-wrapper">
             <div class="vn-cover">
                 <img src="${pageContext.request.contextPath}/assets/img/cover/cover.jpg" alt="Cover">
             </div>

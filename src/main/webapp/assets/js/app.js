@@ -363,7 +363,7 @@ const App = {
         render() {
             // Render kệ mặc định (System) - không có nút add
             this.renderShelf('bg-shelf', App.state.backgrounds, 'background', false);
-            this.renderShelf('album-shelf', App.state.songs, 'song', false);
+            this.renderShelf('playlist-shelf', App.state.songs, 'song', false);
 
             // Render User Actions (Tạo & Nhập mã)
             this.renderUserActions();
@@ -381,7 +381,7 @@ const App = {
         // tạo và nhập mã
         renderUserActions() {
             // Tìm container của tab Playlists (Albums)
-            const container = document.getElementById('tab-albums'); // ID trong jsp
+            const container = document.getElementById('tab-playlists'); // ID trong jsp
             if (!container) return;
 
             // tránh trùng
@@ -467,7 +467,7 @@ const App = {
         renderShelf(containerId, dataList, type, isUserShelf = false, collectionId = null) {
             const container = document.getElementById(containerId);
             const targetContainer = container || (containerId === 'bg-shelf-default' ? document.getElementById('bg-shelf') :
-                containerId === 'playlist-shelf-default' ? document.getElementById('album-shelf') : null);
+                containerId === 'playlist-shelf-default' ? document.getElementById('playlist-shelf') : null);
 
             if (!targetContainer) return;
             targetContainer.innerHTML = '';
