@@ -25,9 +25,7 @@ public class CollectionDAO {
     }
 
     public boolean subscribeCollection(int userId, String shareCode) {
-
-
-        String sql = "INSERT INTO user_followed_collections (user_id, collection_id, role) VALUES (?, (SELECT id FROM collections WHERE share_code = ?), 'VIEWER')";
+        String sql = "INSERT INTO user_followed_collections (user_id, collections_id, role) VALUES (?, (SELECT id FROM collections WHERE share_code = ?), 'VIEWER')";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -92,5 +90,44 @@ public class CollectionDAO {
         return list;
     }
 
+    // check user có phải chủ sở hữu collection không
+    public boolean isCollectionOwner(int userId, int collectionId) {
+        String sql = "SELECT id FROM collections WHERE id = ? AND user_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, collectionId);
+            ps.setInt(2, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 
+    //  Xóa bài hát khỏi collection
+    public boolean removeSongFromCollection(int colId, int songId) {
+        String sql = "DELETE FROM collections_songs WHERE collection_id = ? AND song_id = ?";
+        return executeUpdate(sql, colId, songId);
+    }
+
+    //  Xóa background khỏi collection
+    public boolean removeBackgroundFromCollection(int colId, int bgId) {
+        String sql = "DELETE FROM collections_backgrounds WHERE collection_id = ? AND background_id = ?";
+        return executeUpdate(sql, colId, bgId);
+    }
+
+    // delete
+    private boolean executeUpdate(String sql, int p1, int p2) {
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, p1);
+            ps.setInt(2, p2);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

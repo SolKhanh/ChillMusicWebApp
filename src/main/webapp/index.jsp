@@ -11,19 +11,22 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Science+Gothic:wght@100..900&display=swap" rel="stylesheet">
 
-    <!-- CSS Files -->
-    <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/index.css">
+    <!-- CSS Files (Modularized) -->
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/core.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/visuals.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/ui.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/player.css">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/vinylrecord.css">
 </head>
 <body>
 
-<!-- Background & Visualizer (Của bạn) -->
+<!-- Background & Visualizer -->
 <div id="background-container" class="background-container"
      style="background-image: url('${pageContext.request.contextPath}/assets/img/cover/background.jpg');">
 </div>
 <canvas id="visualizer-canvas"></canvas>
 
-<!-- --- NEW: TOP BAR & AUTH (Từ Main) --- -->
+<!-- Top Bar -->
 <div class="top-bar">
     <div id="menu-btn" class="icon-btn">
         <i class="fa-solid fa-bars"></i>
@@ -34,7 +37,7 @@
     </div>
 </div>
 
-<!-- --- NEW: POPUPS (Từ Main) --- -->
+<!-- Popups & Modals -->
 <div id="user-popup" class="user-popup">
     <div id="guest-view">
         <p>Chào bạn,</p>
@@ -49,6 +52,7 @@
 </div>
 
 <div id="auth-modal" class="modal-overlay">
+    <!-- ... existing auth modal content ... -->
     <div class="modal-content">
         <span id="btn-close-auth" class="close-modal">&times;</span>
         <h2 id="auth-title">Đăng Nhập</h2>
@@ -63,11 +67,46 @@
         </p>
     </div>
 </div>
-<!-- ------------------------------------- -->
+
+<!-- NEW: UPLOAD SONG MODAL -->
+<div id="upload-song-modal" class="modal-overlay">
+    <div class="modal-content" style="width: 400px; text-align: left;">
+        <span id="btn-close-upload" class="close-modal">&times;</span>
+        <h2 style="text-align: center; margin-bottom: 20px;">Thêm Bài Hát Mới</h2>
+
+        <form id="upload-song-form">
+            <input type="hidden" id="upload-collection-id">
+
+            <div class="form-group">
+                <label>File nhạc (MP3):</label>
+                <div class="file-upload-box">
+                    <input type="file" id="song-file" accept="audio/*" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Ảnh bìa (Tùy chọn):</label>
+                <div class="file-upload-box">
+                    <input type="file" id="song-cover" accept="image/*">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <input type="text" id="song-title" placeholder="Tên bài hát" required>
+            </div>
+
+            <div class="form-group">
+                <input type="text" id="song-artist" placeholder="Tên nghệ sĩ (Ca sĩ)">
+            </div>
+
+            <button type="submit" class="submit-btn">Tải lên</button>
+        </form>
+    </div>
+</div>
 
 <div id="overlay" class="overlay"></div>
 
-<!-- SIDEBAR (Merge: Giữ ID cũ nhưng thêm Container mới) -->
+<!-- Sidebar -->
 <div id="sidebar" class="sidebar">
     <div class="sidebar-header">
         <h2>Thư viện</h2>
@@ -76,31 +115,24 @@
 
     <div class="sidebar-tabs">
         <button class="tab-btn active" data-tab="backgrounds">Backgrounds</button>
-        <!-- App.js map 'albums' logic vào playlist nên giữ nguyên ID tab của bạn hoặc đổi thành playlists cũng được -->
         <button class="tab-btn" data-tab="albums">Albums</button>
     </div>
 
     <div class="sidebar-content">
         <div id="tab-backgrounds" class="tab-pane active">
-            <!-- Kệ mặc định (ID của bạn) -->
             <div class="shelf-section">
                 <h3 class="shelf-title">Hệ thống</h3>
                 <div class="shelf-grid shelf-scroll" id="bg-shelf"></div>
             </div>
-
-            <!-- Container cho Collection (Mới từ Main) -->
             <div id="bg-container-owner"></div>
             <div id="bg-container-subscriber"></div>
         </div>
 
         <div id="tab-albums" class="tab-pane">
-            <!-- Kệ mặc định (ID của bạn) -->
             <div class="shelf-section">
                 <h3 class="shelf-title">Hệ thống</h3>
                 <div class="shelf-grid shelf-scroll" id="album-shelf"></div>
             </div>
-
-            <!-- Container cho Collection (Mới từ Main) -->
             <div id="playlist-container-owner"></div>
             <div id="playlist-container-subscriber"></div>
         </div>
@@ -109,14 +141,14 @@
     <input type="file" id="upload-input" style="display: none;" accept="image/*">
 </div>
 
-<!-- MAIN UI (Của bạn) -->
+<!-- Main UI -->
 <div class="main-container">
     <div id="clock" class="clock"></div>
 </div>
 
 <div id="ambient-sounds-panel" class="ambient-panel"></div>
 
-<!-- PLAYER (Của bạn - Giữ Animation Vinyl) -->
+<!-- Player -->
 <div class="player-container">
     <div class="song-info">
         <div class="vn-album-wrapper">

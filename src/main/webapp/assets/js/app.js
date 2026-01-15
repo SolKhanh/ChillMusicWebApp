@@ -1,13 +1,11 @@
 const App = {
     config: {
-        // --- Config từ Main (Backend) ---
         contextPath: '/Chillscape',
         apiSongs: 'api/songs',
         apiSounds: 'api/sounds',
         apiBackgrounds: 'api/backgrounds',
         imgBaseUrl: 'assets/img/',
 
-        // --- Config từ User (UI) ---
         backgroundBaseUrl: 'assets/img/backgrounds/',
         defaultCover: 'assets/img/covers/cover.jpg',
         DEFAULT_BG_INTERVAL: 5 * 60 * 1000,
@@ -16,14 +14,13 @@ const App = {
     },
 
     state: {
-        // --- State chung ---
         songs: [],
         sounds: [],
         backgrounds: [],
         currentSongIndex: 0,
         currentBgIndex: -1,
 
-        // --- State Player (User UI) ---
+        //  Player (User UI)
         mainAudio: new Audio(),
         ambientAudios: {},
         isPlaying: false,
@@ -31,7 +28,7 @@ const App = {
         repeatMode: 'none',
         savedVolume: 0.5,
 
-        // --- State Visualizer & Zen (User UI) ---
+        // Visualizer & Zen
         isZenMode: false,
         inactivityTimer: null,
         audioContext: null,
@@ -40,16 +37,19 @@ const App = {
         source: null,
         animationId: null,
 
-        // --- State Backend/User (Main) ---
+        // Backend/User
         currentUser: null,
         userBackgrounds: [],
         userSongs: [],
         collections: [],
         bgTimerId: null,
         bgIntervalTime: 5 * 60 * 1000,
+
+        // upload
+        uploadingCollectionId: null
     },
 
-    // --- UTILS: Hợp nhất xử lý đường dẫn ---
+    // UTILS
     utils: {
         resolvePath(path) {
             if (!path || path === 'null' || path === "undefined") return "";
@@ -65,27 +65,27 @@ const App = {
         }
     },
 
-    // --- INIT: Quy trình khởi động hợp nhất ---
+    // init
     async init() {
         console.log("Chillscape đang khởi động...");
 
-        // 1. Load dữ liệu & Auth (Logic Main)
+        // Load dữ liệu & Auth
         await this.loadData();
         this.Auth.init();
 
-        // 2. Khởi tạo UI (Logic User)
+        // init UI
         this.initClock();
         this.renderAmbientControls();
 
-        // 3. Khởi tạo Sidebar & Playlist (Logic Main merge với UI User)
+        //Sidebar & Playlist
         this.Sidebar.init();
 
-        // 4. Khởi tạo Player & Visualizer (Logic User)
+        // Player & Visualizer
         this.initMainPlayer();
         this.initProgressBar();
         this.initVolumeControl();
 
-        // 5. Các tính năng phụ trợ
+        //
         this.startBackgroundSlideshow();
         this.bindEvents(); // Zen mode, keyboard shortcuts
         this.initZenMode();
@@ -95,7 +95,6 @@ const App = {
         }
     },
 
-    // --- DATA LOADING (Ưu tiên logic Main để bắt API chuẩn) ---
     async loadData() {
         try {
             const urlSongs = this.utils.resolvePath(this.config.apiSongs);
@@ -116,7 +115,7 @@ const App = {
         }
     },
 
-    // --- AUTHENTICATION (Toàn bộ từ Main) ---
+    // auth
     Auth: {
         currentUser: null,
         mode: 'login',
@@ -193,7 +192,7 @@ const App = {
                 // Xử lý response text trước để tránh lỗi JSON parse
                 const text = await res.text();
                 let data;
-                try { data = JSON.parse(text); } catch(err) { alert("Lỗi phản hồi server"); return; }
+                try { data = JSON.parse(text); } catch(err) { alert("Lỗi phản hồi server: " + text); return; }
 
                 if (res.ok && data.status === 'success') {
                     if (this.mode === 'login') this.onLoginSuccess(data);
@@ -224,14 +223,32 @@ const App = {
             App.Sidebar.loadUserContent();
         },
 
-        onLogoutSuccess() {
+        // rs data khi logout
+        async onLogoutSuccess() {
             this.currentUser = null;
             App.state.currentUser = null;
             document.getElementById('login-status-dot').style.display = 'none';
             document.getElementById('guest-view').style.display = 'block';
             document.getElementById('user-view').style.display = 'none';
+
+            // Reset dữ liệu user
             App.state.userBackgrounds = [];
+            App.state.collections = [];
+
+            // Dừng nhạc & Reset Player
+            App.state.isPlaying = false;
+            App.state.mainAudio.pause();
+            App.updatePlayerControls();
+
+            // Load lại dữ liệu
+            await App.loadData();
+
+            // Reset giao diện về mặc định
+            if (App.state.songs.length > 0) App.loadSong(0);
             App.Sidebar.render();
+
+            // Đóng popup user
+            document.getElementById('user-popup').classList.remove('active');
         },
         togglePopup() { document.getElementById('user-popup')?.classList.toggle('active'); },
         showModal(mode) {
@@ -257,11 +274,12 @@ const App = {
         switchMode() { this.showModal(this.mode === 'login' ? 'register' : 'login'); }
     },
 
-    // --- SIDEBAR (Logic Main merge với UI User) ---
+    // sidebar
     Sidebar: {
         init() {
             this.setupToggle();
             this.setupTabs(); // Từ User
+            this.setupUploadModal();
             this.render();
         },
 
@@ -291,6 +309,23 @@ const App = {
             });
         },
 
+        setupUploadModal() {
+            const modal = document.getElementById('upload-song-modal');
+            const closeBtn = document.getElementById('btn-close-upload');
+            const form = document.getElementById('upload-song-form');
+            const overlay = document.getElementById('upload-song-modal');
+
+            if (closeBtn) closeBtn.onclick = () => modal?.classList.remove('active');
+            if (overlay) overlay.onclick = (e) => { if(e.target === overlay) modal?.classList.remove('active'); };
+
+            if (form) {
+                form.onsubmit = async (e) => {
+                    e.preventDefault();
+                    await this.handleSongUploadSubmit();
+                };
+            }
+        },
+
         async loadUserContent() {
             if (!App.Auth.currentUser) {
                 App.state.collections = [];
@@ -302,8 +337,8 @@ const App = {
                 if (res.ok) {
                     const data = await res.json();
                     if (data.status === 'success') {
-                        const myCols = data.myCollections.map(c => ({...c, type: 'OWNER'}));
-                        const followCols = data.followedCollections.map(c => ({...c, type: 'SUBSCRIBER'}));
+                        const myCols = (data.myCollections || []).map(c => ({...c, type: 'OWNER'}));
+                        const followCols = (data.followedCollections || []).map(c => ({...c, type: 'SUBSCRIBER'}));
 
                         // Chuẩn hóa dữ liệu
                         App.state.collections = [...myCols, ...followCols].map(col => ({
@@ -326,11 +361,14 @@ const App = {
         },
 
         render() {
-            // Render kệ mặc định (System)
-            this.renderShelf('bg-shelf', App.state.backgrounds, 'background'); // ID cũ là bg-shelf
-            this.renderShelf('album-shelf', App.state.songs, 'song'); // ID cũ là album-shelf
+            // Render kệ mặc định (System) - không có nút add
+            this.renderShelf('bg-shelf', App.state.backgrounds, 'background', false);
+            this.renderShelf('album-shelf', App.state.songs, 'song', false);
 
-            // Render kệ User (Collection) - Nếu HTML có các container này
+            // Render User Actions (Tạo & Nhập mã)
+            this.renderUserActions();
+
+            // Render kệ User (Collection)
             const myCols = App.state.collections.filter(c => c.type === 'OWNER');
             const followCols = App.state.collections.filter(c => c.type === 'SUBSCRIBER');
 
@@ -340,12 +378,49 @@ const App = {
             this.renderCollectionGroup('bg-container-subscriber', followCols, 'background');
         },
 
+        // tạo và nhập mã
+        renderUserActions() {
+            // Tìm container của tab Playlists (Albums)
+            const container = document.getElementById('tab-albums'); // ID trong jsp
+            if (!container) return;
+
+            // tránh trùng
+            const oldActions = document.getElementById('user-collection-actions');
+            if (oldActions) oldActions.remove();
+
+            // Chỉ hiện khi đăng nhập
+            if (!App.Auth.currentUser) return;
+
+            const actionDiv = document.createElement('div');
+            actionDiv.id = 'user-collection-actions';
+            actionDiv.style.cssText = "display:flex; gap:10px; padding:0 0 20px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:20px;";
+
+            const btnCreate = document.createElement('button');
+            btnCreate.className = 'auth-btn';
+            btnCreate.style.cssText = "font-size: 0.8rem; padding: 8px; flex: 1;";
+            btnCreate.innerHTML = '<i class="fa-solid fa-plus"></i> Tạo Mới';
+            btnCreate.onclick = () => this.handleCreateCollection();
+
+            const btnJoin = document.createElement('button');
+            btnJoin.className = 'auth-btn outline';
+            btnJoin.style.cssText = "font-size: 0.8rem; padding: 8px; flex: 1;";
+            btnJoin.innerHTML = '<i class="fa-solid fa-link"></i> Nhập Mã';
+            btnJoin.onclick = () => this.handleFollowCollection();
+
+            actionDiv.appendChild(btnCreate);
+            actionDiv.appendChild(btnJoin);
+
+            // Chèn vào đầu tab
+            container.insertBefore(actionDiv, container.firstChild);
+        },
+
         renderCollectionGroup(containerId, collections, itemType) {
             const container = document.getElementById(containerId);
-            if (!container || (collections.length === 0 && !containerId.includes('owner'))) return;
+            if (!container) return;
             container.innerHTML = '';
 
-            // Header nhóm
+            if (collections.length === 0) return;
+
             const groupHeader = document.createElement('h4');
             groupHeader.style.cssText = "padding: 0 15px; margin-bottom: 10px; opacity: 0.8; font-size: 0.8rem; text-transform: uppercase;";
             groupHeader.innerText = containerId.includes('owner') ? "Của tôi" : "Đã theo dõi";
@@ -356,12 +431,24 @@ const App = {
                 if (col.type !== 'OWNER' && dataList.length === 0) return;
 
                 const sectionDiv = document.createElement('div');
-                sectionDiv.className = 'shelf-section'; // Class mới nếu cần CSS
-                sectionDiv.innerHTML = `<h3 class="shelf-title">${col.name} <small>(${dataList.length})</small></h3>`;
+                sectionDiv.className = 'shelf-section';
+
+                // Tiêu đề + Mã chia sẻ
+                let titleHtml = `<h3 class="shelf-title" style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span>${col.name} <small style="opacity:0.6; font-size:0.8em">(${dataList.length})</small></span>`;
+
+                if (col.type === 'OWNER') {
+                    titleHtml += `<span style="font-size:0.7em; font-weight:normal; cursor:pointer; background:rgba(255,255,255,0.1); padding:4px 8px; border-radius:4px;" 
+                                        title="Click để sao chép mã"
+                                        onclick="navigator.clipboard.writeText('${col.shareCode}'); alert('Đã sao chép mã: ${col.shareCode}')">
+                                        <i class="fa-solid fa-share-nodes"></i> ${col.shareCode}
+                                  </span>`;
+                }
+                titleHtml += `</h3>`;
+                sectionDiv.innerHTML = titleHtml;
 
                 const shelfDiv = document.createElement('div');
-                shelfDiv.className = 'shelf-scroll'; // Hoặc class kệ cũ của User
-                // Fallback style để giống giao diện cũ nếu chưa có CSS shelf-scroll
+                shelfDiv.className = 'shelf-scroll';
                 shelfDiv.style.display = 'flex';
                 shelfDiv.style.gap = '15px';
                 shelfDiv.style.overflowX = 'auto';
@@ -379,24 +466,23 @@ const App = {
 
         renderShelf(containerId, dataList, type, isUserShelf = false, collectionId = null) {
             const container = document.getElementById(containerId);
-            // Fallback: nếu không tìm thấy ID mới (Main), thử tìm ID cũ (User) cho kệ mặc định
             const targetContainer = container || (containerId === 'bg-shelf-default' ? document.getElementById('bg-shelf') :
                 containerId === 'playlist-shelf-default' ? document.getElementById('album-shelf') : null);
 
             if (!targetContainer) return;
             targetContainer.innerHTML = '';
 
-            // Nút Add (Chỉ hiện cho kệ User hoặc dùng logic upload cũ cho kệ System)
-            if (isUserShelf || ['bg-shelf', 'album-shelf'].includes(targetContainer.id)) {
+            // btn add (chỉ khi đăng nhập)
+            if (isUserShelf) {
                 const addDiv = document.createElement('div');
                 addDiv.className = 'shelf-item add-new';
                 addDiv.innerHTML = `<i class="fa-solid fa-plus"></i>`;
-                // Nếu là kệ hệ thống -> dùng logic local upload cũ (User). Nếu kệ Collection -> dùng API upload (Main)
-                if (collectionId) {
-                    addDiv.onclick = () => this.handleUploadClick(type, collectionId);
-                } else {
-                    addDiv.onclick = () => App.handleLocalUpload(type === 'background' ? 'background' : 'album');
-                }
+                addDiv.style.display = 'flex';
+                addDiv.style.justifyContent = 'center';
+                addDiv.style.alignItems = 'center';
+                addDiv.style.fontSize = '24px';
+
+                addDiv.onclick = () => this.handleUploadClick(type, collectionId);
                 targetContainer.appendChild(addDiv);
             }
 
@@ -417,29 +503,35 @@ const App = {
 
                 div.innerHTML = `<img src="${imgSrc}" loading="lazy">`;
 
-                // Logic Click: Cập nhật State và gọi Player
+                // Nút Delete (Chỉ hiện khi là Owner)
+                if (isUserShelf) {
+                    const delBtn = document.createElement('div');
+                    delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+                    delBtn.style.cssText = "position:absolute; top:5px; right:5px; background:rgba(0,0,0,0.7); color:#ff5555; width:25px; height:25px; display:flex; align-items:center; justify-content:center; border-radius:50%; cursor:pointer; z-index:10; opacity:0; transition:0.2s;";
+
+                    div.onmouseenter = () => delBtn.style.opacity = '1';
+                    div.onmouseleave = () => delBtn.style.opacity = '0';
+
+                    delBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        if(confirm("Bạn có chắc muốn xóa không?")) {
+                            this.handleDeleteItem(type, collectionId, item.id);
+                        }
+                    };
+                    div.appendChild(delBtn);
+                }
+
                 div.onclick = () => {
                     if (type === 'background') {
-                        // Nếu đang ở collection khác, cập nhật list background hiện tại
-                        if (App.state.backgrounds !== dataList) {
-                            App.state.backgrounds = dataList;
-                        }
-                        // Tìm index chính xác trong list mới
+                        if (App.state.backgrounds !== dataList) App.state.backgrounds = dataList;
                         const realIndex = dataList.indexOf(item);
                         App.state.currentBgIndex = realIndex - 1;
                         App.changeBackground();
                         App.startBackgroundSlideshow();
                     } else {
-                        // Cập nhật playlist hiện tại
-                        if (App.state.songs !== dataList) {
-                            App.state.songs = dataList;
-                        }
-                        // Tìm index bài hát (vì dataList có thể khác với App.state.songs lúc render)
+                        if (App.state.songs !== dataList) App.state.songs = dataList;
                         let playIndex = index;
-                        // Nếu item có id, tìm theo id cho chắc chắn
-                        if (item.id) {
-                            playIndex = App.state.songs.findIndex(s => s.id === item.id);
-                        }
+                        if (item.id) playIndex = App.state.songs.findIndex(s => s.id === item.id);
                         App.loadSong(playIndex);
                     }
                 };
@@ -447,41 +539,126 @@ const App = {
             });
         },
 
-        // Upload lên Server (Logic Main)
+        // Upload lên Server
         handleUploadClick(type, collectionId) {
-            const fileInput = document.getElementById('upload-input');
-            if(!fileInput) return;
-            fileInput.value = '';
-            fileInput.click();
+            if (type === 'background') {
+                const fileInput = document.getElementById('upload-input');
+                if(!fileInput) return;
+                fileInput.value = '';
+                fileInput.click();
+                fileInput.onchange = (e) => this.handleBackgroundUpload(e, collectionId);
+            } else if (type === 'song') {
+                App.state.uploadingCollectionId = collectionId;
+                document.getElementById('upload-song-form').reset();
+                document.getElementById('upload-song-modal').classList.add('active');
+            }
+        },
 
-            fileInput.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('collectionId', collectionId);
+        async handleBackgroundUpload(e, collectionId) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('collectionId', collectionId);
 
-                let endpoint = type === 'background' ? 'api/upload/background' : 'api/upload/song';
-                if (type === 'song') {
-                    formData.append('title', prompt("Tên bài hát:", file.name.replace(/\.[^/.]+$/, "")) || "No Title");
-                    formData.append('artist', prompt("Tên nghệ sĩ:", "Unknown") || "Unknown");
+            try {
+                const res = await fetch(App.utils.resolvePath('api/upload/background'), {method: 'POST', body: formData});
+                const data = await res.json();
+                if (res.ok && data.status === 'success') {
+                    alert("Upload ảnh thành công!");
+                    this.loadUserContent();
+                } else alert("Lỗi: " + data.message);
+            } catch (err) { alert("Lỗi kết nối."); }
+        },
+
+        async handleSongUploadSubmit() {
+            const collectionId = App.state.uploadingCollectionId;
+            const songFile = document.getElementById('song-file').files[0];
+            const coverFile = document.getElementById('song-cover').files[0];
+            const title = document.getElementById('song-title').value;
+            const artist = document.getElementById('song-artist').value;
+
+            if (!songFile) { alert("Vui lòng chọn file nhạc!"); return; }
+
+            const formData = new FormData();
+            formData.append('collectionId', collectionId);
+            formData.append('file', songFile);
+            if (coverFile) formData.append('cover', coverFile);
+            formData.append('title', title);
+            formData.append('artist', artist);
+
+            const btn = document.querySelector('#upload-song-form .submit-btn');
+            const originalText = btn.innerText;
+            btn.innerText = "Đang tải lên...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(App.utils.resolvePath('api/upload/song'), {method: 'POST', body: formData});
+                const data = await res.json();
+
+                if (res.ok && data.status === 'success') {
+                    alert("Thêm bài hát thành công!");
+                    document.getElementById('upload-song-modal').classList.remove('active');
+                    this.loadUserContent();
+                } else {
+                    alert("Lỗi: " + (data.message || "Không thể upload"));
                 }
+            } catch (err) {
+                console.error(err);
+                alert("Lỗi kết nối đến server.");
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        },
 
-                try {
-                    const res = await fetch(App.utils.resolvePath(endpoint), {method: 'POST', body: formData});
-                    const data = await res.json();
-                    if (res.ok && data.status === 'success') {
-                        alert("Upload thành công!");
-                        this.loadUserContent(); // Reload để cập nhật UI
-                    } else {
-                        alert("Lỗi: " + data.message);
-                    }
-                } catch (err) { alert("Lỗi kết nối."); }
-            };
+        async handleDeleteItem(type, colId, itemId) {
+            const itemType = (type === 'song') ? 'song' : 'background';
+            try {
+                const res = await fetch(App.utils.resolvePath(`api/collections/delete/${itemType}/${colId}/${itemId}`), {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    this.loadUserContent();
+                } else alert("Lỗi xóa: " + data.message);
+            } catch (e) { alert("Lỗi kết nối server"); }
+        },
+
+        async handleCreateCollection() {
+            if (!App.Auth.currentUser) return App.Auth.showModal('login');
+            const name = prompt("Nhập tên Bộ sưu tập mới:");
+            if (!name) return;
+            try {
+                const res = await fetch(App.utils.resolvePath('api/collections/create'), {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({name})
+                });
+                const data = await res.json();
+                if (data.status === 'success') this.loadUserContent();
+                else alert(data.message || "Lỗi tạo collection");
+            } catch(e) { alert("Lỗi kết nối"); }
+        },
+
+        async handleFollowCollection() {
+            if (!App.Auth.currentUser) return App.Auth.showModal('login');
+            const code = prompt("Nhập Mã chia sẻ (Share Code):");
+            if (!code) return;
+            try {
+                const res = await fetch(App.utils.resolvePath('api/collections/follow'), {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({shareCode: code})
+                });
+                const data = await res.json();
+                if (data.status === 'success') this.loadUserContent();
+                else alert(data.message || "Lỗi follow collection");
+            } catch(e) { alert("Lỗi kết nối"); }
         }
     },
 
-    // --- PLAYER (Giữ logic User để có Visualizer) ---
+    // player
     initMainPlayer() {
         if (this.state.songs.length > 0) {
             this.loadSong(0);
@@ -498,9 +675,9 @@ const App = {
         if (!song) return;
 
         this.state.currentSongIndex = index;
-        // Quan trọng: Dùng resolvePath để lấy đường dẫn đúng
+        //  Dùng resolvePath để lấy đường dẫn đúng
         this.state.mainAudio.src = this.utils.resolvePath(song.filePath);
-        this.state.mainAudio.crossOrigin = "anonymous"; // Bắt buộc cho Visualizer
+        this.state.mainAudio.crossOrigin = "anonymous";
 
         this.updateSongUI();
 
@@ -565,7 +742,7 @@ const App = {
         }
     },
 
-    // --- VISUALIZER (Code User - Giữ nguyên) ---
+    // VISUALIZER
     initVisualizer() {
         if (this.state.audioContext) return;
         this.state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -600,7 +777,6 @@ const App = {
         renderFrame();
     },
 
-    // --- CÁC TÍNH NĂNG KHÁC (User UI) ---
     initProgressBar() {
         const slider = document.getElementById('progress-slider');
         const audio = this.state.mainAudio;
@@ -637,7 +813,7 @@ const App = {
         };
     },
 
-    // --- BACKGROUND SLIDESHOW ---
+    // slideshow cho bg
     startBackgroundSlideshow() {
         this.stopBackgroundSlideshow();
         if (this.state.currentBgIndex === -1) this.changeBackground();
@@ -667,7 +843,7 @@ const App = {
         }
     },
 
-    // --- LOCAL UPLOAD (User - Preview nhanh) ---
+    // local update (User - Preview nhanh)
     handleLocalUpload(type) {
         const fileInput = document.getElementById('upload-input');
         if (!fileInput) return;
@@ -690,7 +866,7 @@ const App = {
         };
     },
 
-    // --- ZEN MODE & UI ---
+    // zen mode & UI
     initZenMode() {
         const resetTimer = () => {
             if (this.state.isZenMode) this.toggleZenMode(false);
