@@ -1,6 +1,7 @@
 package com.chillscape.utils;
 
 import javax.servlet.http.HttpServletRequest;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.ResourceBundle;
 
@@ -18,12 +19,14 @@ public class LanguageUtil {
         } else if (langParam != null && langParam.equals("vi")) {
             locale = new Locale("vi", "VN");
         }
-
         try {
-            ResourceBundle bundle = ResourceBundle.getBundle(messages, locale);
-            return bundle.getString(key);
+            // ResourceBundle tự động tìm file messages_vi.properties hoặc messages_en.properties
+            ResourceBundle bundle = ResourceBundle.getBundle("messages", locale);
+            //encoding ISO-8859-1 sang UTF-8 để tránh lỗi font
+            String val = bundle.getString(key);
+            return new String(val.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8);
         } catch (Exception e) {
-            return "???" + key + "???";
+            return "???" + key + "???"; // Trả về key nếu không tìm thấy
         }
     }
 }
