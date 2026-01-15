@@ -30,8 +30,8 @@ public class UserServlet extends HttpServlet {
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
 
-        if (pathInfo == null) {
-            resp.setStatus(404);
+        if (pathInfo == null || pathInfo.equals("/")) {
+            sendError(req, resp, 404, "error.endpoint.not_found");
             return;
         }
 
@@ -46,7 +46,7 @@ public class UserServlet extends HttpServlet {
                 handleRegister(req, resp);
                 break;
             default:
-                resp.setStatus(404);
+                sendError(req, resp, 404, "error.endpoint.not_found");
         }
     }
 
@@ -59,7 +59,7 @@ public class UserServlet extends HttpServlet {
         if ("/check".equals(pathInfo)) {
             handleCheckSession(req, resp);
         } else {
-            resp.setStatus(404);
+            sendError(req, resp, 404, "error.endpoint.not_found");
         }
     }
 
@@ -75,10 +75,9 @@ public class UserServlet extends HttpServlet {
             responseData.put("username", session.getAttribute("username"));
             responseData.put("role", session.getAttribute("role"));
         } else {
-
             resp.setStatus(401);
             responseData.put("status", "error");
-            responseData.put("message", "No session found");
+            responseData.put("message", LanguageUtil.getMessage(req, "auth.session.not_found"));
         }
 
         out.print(gson.toJson(responseData));
@@ -117,7 +116,7 @@ public class UserServlet extends HttpServlet {
         }
 
         // Trả về JSON
-        out.print(new Gson().toJson(responseData));
+        out.print(gson.toJson(responseData));
         out.flush();
     }
 
@@ -141,7 +140,7 @@ public class UserServlet extends HttpServlet {
         PrintWriter out = resp.getWriter();
         Map<String, Object> responseData = new HashMap<>();
 
-        if (username == null || password == null) {
+        if (username == null || password == null || username.trim().isEmpty() || password.trim().isEmpty()) {
             resp.setStatus(400);
             responseData.put("status", "error");
             responseData.put("message", LanguageUtil.getMessage(req, "auth.register.invalid"));
@@ -154,19 +153,26 @@ public class UserServlet extends HttpServlet {
         user.setPassword(password);
         user.setRole("USER");
 
-        boolean isRegisterd = userDAO.register(user);
-        if (isRegisterd) {
+        boolean isRegistered = userDAO.register(user);
+        if (isRegistered) {
             String msg = LanguageUtil.getMessage(req, "auth.register.success");
             responseData.put("status", "success");
             responseData.put("message", msg);
 
         } else {
             resp.setStatus(HttpServletResponse.SC_CONFLICT);
-
             String msg = LanguageUtil.getMessage(req, "auth.register.fail");
             responseData.put("status", "error");
             responseData.put("message", msg);
         }
         out.print(gson.toJson(responseData));
+    }
+
+    private void sendError(HttpServletRequest req, HttpServletResponse resp, int statusCode, String messageKey) throws IOException {
+        resp.setStatus(statusCode);
+        Map<String, Object> responseData = new HashMap<>();
+        responseData.put("status", "error");
+        responseData.put("message", LanguageUtil.getMessage(req, messageKey));
+        resp.getWriter().print(gson.toJson(responseData));
     }
 }

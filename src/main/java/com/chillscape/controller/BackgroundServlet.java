@@ -3,6 +3,7 @@ package com.chillscape.controller;
 
 import com.chillscape.dao.BackgroundDAO;
 import com.chillscape.model.Background;
+import com.chillscape.utils.LanguageUtil;
 import com.google.gson.Gson;
 
 import javax.servlet.ServletException;
@@ -30,8 +31,6 @@ public class BackgroundServlet extends HttpServlet {
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
 
-        ResourceBundle bundle = ResourceBundle.getBundle("messages");
-
         try {
             List<Background> backgrounds = backgroundDAO.getDefaultBackgrounds();
             String json = gson.toJson(backgrounds);
@@ -39,7 +38,7 @@ public class BackgroundServlet extends HttpServlet {
             resp.flushBuffer();
         } catch (Exception e) {
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            String errorMsg = bundle.getString("error.fetch.backgrounds");
+            String errorMsg = LanguageUtil.getMessage(req, "error.fetch.backgrounds");
             resp.getWriter().write("{\"error\": \"" + errorMsg + "\"}");
             e.printStackTrace();
         }
