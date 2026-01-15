@@ -25,6 +25,7 @@ import java.util.UUID;
 public class UploadServlet extends HttpServlet {
     private static final String BACKGROUND_DIR = "assets/img/backgrounds";
     private static final String SONG_DIR = "assets/audio/songs";
+    private static final String COVER_DIR = "assets/img/covers";
 
     private final BackgroundDAO backgroundDAO = new BackgroundDAO();
     private final SongDAO songDAO = new SongDAO();
@@ -34,6 +35,8 @@ public class UploadServlet extends HttpServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
+        req.setCharacterEncoding("UTF-8");
+
         PrintWriter out = resp.getWriter();
         Map<String, Object> responseData = new HashMap<>();
 
@@ -46,22 +49,18 @@ public class UploadServlet extends HttpServlet {
             return;
         }
 
-        int userId = (int) session.getAttribute("userId");
         String pathInfo = req.getPathInfo();
-
         try {
-            if ("/background".equals(pathInfo)) {
-                handleUploadBackground(req, responseData);
-            } else if ("/song".equals(pathInfo)) {
-                handleUploadSong(req, responseData);
-            } else {
+            if ("/background".equals(pathInfo)) handleUploadBackground(req, responseData);
+            else if ("/song".equals(pathInfo)) handleUploadSong(req, responseData);
+            else {
                 resp.setStatus(404);
-                responseData.put("message", LanguageUtil.getMessage(req, "error.endpoint.not_found"));
+                responseData.put("message", "Endpoint not found");
             }
         } catch (Exception e) {
             e.printStackTrace();
             resp.setStatus(500);
-            responseData.put("message", LanguageUtil.getMessage(req, "error.upload.failed") + ": " + e.getMessage());
+            responseData.put("message", "Upload failed: " + e.getMessage());
         }
 
         out.print(gson.toJson(responseData));
@@ -69,97 +68,90 @@ public class UploadServlet extends HttpServlet {
     }
 
     private void handleUploadBackground(HttpServletRequest req, Map<String, Object> responseData) throws IOException, ServletException {
-        String collectionIdStr = req.getParameter("collectionId");
-        if (collectionIdStr == null || collectionIdStr.isEmpty()) {
-            throw new IOException("Missing collectionId. Cannot upload orphan file.");
-        }
 
+        String collectionIdStr = req.getParameter("collectionId");
         Part filePart = req.getPart("file");
         String savedFileName = saveFile(req, filePart, BACKGROUND_DIR);
-
         int newBgId = backgroundDAO.insertBackground(savedFileName, false);
 
         if (newBgId != -1) {
-            try {
-                int colId = Integer.parseInt(collectionIdStr);
-                boolean linked = backgroundDAO.addBackgroundToCollection(colId, newBgId);
-
-                if (linked) {
-                    responseData.put("status", "success");
-                    responseData.put("message", LanguageUtil.getMessage(req, "upload.success"));
-                    responseData.put("fileName", savedFileName);
-                    responseData.put("id", newBgId);
-                } else {
-                    throw new IOException("Failed to link background to collection.");
-                }
-            } catch (NumberFormatException e) {
-                throw new IOException("Invalid collection ID");
-            }
+            int colId = Integer.parseInt(collectionIdStr);
+            backgroundDAO.addBackgroundToCollection(colId, newBgId);
+            responseData.put("status", "success");
+            responseData.put("message", "Upload successful");
+            responseData.put("fileName", savedFileName);
         } else {
-            throw new IOException(LanguageUtil.getMessage(req, "error.upload.failed"));
+            throw new IOException("DB Insert failed");
         }
     }
 
     private void handleUploadSong(HttpServletRequest req, Map<String, Object> responseData) throws IOException, ServletException {
         String collectionIdStr = req.getParameter("collectionId");
-        if (collectionIdStr == null || collectionIdStr.isEmpty()) {
-            throw new IOException("Missing collectionId. Cannot upload orphan file.");
-        }
+        if (collectionIdStr == null) throw new IOException("Missing collectionId");
 
-        Part filePart = req.getPart("file");
+        Part songPart = req.getPart("file");
+        Part coverPart = req.getPart("cover"); // Nhận thêm file cover
+
         String title = req.getParameter("title");
         String artist = req.getParameter("artist");
 
         if (title == null || title.trim().isEmpty()) title = "Unknown Title";
 
-        String savedFileName = saveFile(req, filePart, SONG_DIR);
-        String dbFilePath = SONG_DIR + "/" + savedFileName;
+        // Save Audio
+        String savedSongName = saveFile(req, songPart, SONG_DIR);
+        String dbSongPath = SONG_DIR + "/" + savedSongName;
 
-        int newSongId = songDAO.insertSong(title, artist, dbFilePath, null);
+        // Save Cover
+        String dbCoverPath = null;
+        if (coverPart != null && coverPart.getSize() > 0) {
+            String savedCoverName = saveFile(req, coverPart, COVER_DIR);
+            dbCoverPath = COVER_DIR + "/" + savedCoverName;
+        }
+
+        // Insert DB
+        int newSongId = songDAO.insertSong(title, artist, dbSongPath, dbCoverPath);
 
         if (newSongId != -1) {
-            try {
-                int colId = Integer.parseInt(collectionIdStr);
-                boolean linked = songDAO.addSongToCollection(colId, newSongId);
-
-                if (linked) {
-                    responseData.put("status", "success");
-                    responseData.put("message", LanguageUtil.getMessage(req, "upload.success"));
-                    responseData.put("fileName", savedFileName);
-                    responseData.put("filePath", dbFilePath);
-                    responseData.put("id", newSongId);
-                } else {
-                    throw new IOException("Failed to link song to collection.");
-                }
-            } catch (NumberFormatException e) {
-                throw new IOException("Invalid collection ID");
-            }
-        } else {
-            // Dùng LanguageUtil
-            throw new IOException(LanguageUtil.getMessage(req, "error.upload.failed"));
+            int colId = Integer.parseInt(collectionIdStr);
+            boolean linked = songDAO.addSongToCollection(colId, newSongId);
+            if (linked) {
+                responseData.put("status", "success");
+                responseData.put("message", "Upload successful");
+                responseData.put("filePath", dbSongPath);
+                responseData.put("id", newSongId);
+            } else throw new IOException("Failed to link song");
+        } else throw new IOException("DB Insert failed");
+    }
+    private boolean isValidExtension(String filename, String type) {
+        String ext = filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
+        if ("audio".equals(type)) {
+            return ext.equals("mp3") || ext.equals("wav") || ext.equals("ogg");
+        } else if ("image".equals(type)) {
+            return ext.equals("jpg") || ext.equals("jpeg") || ext.equals("png") || ext.equals("gif");
         }
+        return false;
     }
 
     private String saveFile(HttpServletRequest req, Part part, String targetDir) throws IOException {
         String submittedFileName = part.getSubmittedFileName();
-        if (submittedFileName == null || submittedFileName.isEmpty()) {
-            throw new IOException(LanguageUtil.getMessage(req, "error.file.name.empty"));
+        if (submittedFileName == null || submittedFileName.isEmpty()) throw new IOException("File name empty");
+
+        // --- SECURITY CHECK ---
+        String type = targetDir.contains("audio") ? "audio" : "image";
+        if (!isValidExtension(submittedFileName, type)) {
+            throw new IOException("Invalid file format! Allowed: mp3/wav for audio, jpg/png for images.");
         }
 
         String safeFileName = submittedFileName.replaceAll("\\s+", "_");
-        String uniqueFileName = UUID.randomUUID().toString() + "_" + safeFileName;
-
+        String uniqueFileName = java.util.UUID.randomUUID().toString() + "_" + safeFileName;
         String applicationPath = req.getServletContext().getRealPath("");
         String uploadFilePath = applicationPath + File.separator + targetDir;
 
         File fileSaveDir = new File(uploadFilePath);
-        if (!fileSaveDir.exists()) {
-            if (!fileSaveDir.mkdirs()) {
-                throw new IOException(LanguageUtil.getMessage(req, "error.file.dir.create"));
-            }
-        }
+        if (!fileSaveDir.exists()) fileSaveDir.mkdirs();
 
         part.write(uploadFilePath + File.separator + uniqueFileName);
         return uniqueFileName;
     }
+
 }

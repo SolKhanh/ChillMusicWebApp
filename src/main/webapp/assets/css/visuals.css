@@ -1,0 +1,153 @@
+/* Background */
+.background-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -2;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    transition: background-image 0.5s ease-in-out;
+}
+
+/* Visualizer Canvas */
+#visualizer-canvas {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    height: 150px;
+    z-index: 1;
+    pointer-events: none;
+    display: block;
+}
+
+/* Clock */
+.clock {
+    font-size: 6rem;
+    font-weight: 700;
+    color: var(--text-highlight);
+    letter-spacing: -2px;
+    text-shadow: 0 0 30px rgba(0, 0, 0, 0.8), 0 0 10px rgba(0, 0, 0, 0.5);
+    opacity: 0.9;
+    transition: transform 0.3s ease;
+}
+
+.clock:hover {
+    transform: scale(1.05);
+}
+
+/* Ambient Panel */
+.ambient-panel {
+    position: fixed;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--glass-bg);
+    padding: 20px;
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 180px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 3;
+}
+
+.ambient-control {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    color: #fff;
+}
+
+.ambient-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.ambient-slider {
+    width: 100%;
+    height: 6px;
+    cursor: pointer;
+    accent-color: #ffffff;
+}
+
+.ambient-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+}
+
+.ambient-slider::-webkit-slider-thumb:active {
+    transform: scale(1.3);
+    background: #ff9800;
+}
+
+/* Zen Mode Transitions */
+.player-container, .menu-container, .sidebar, .overlay, .ambient-panel, .top-bar {
+    transition: opacity 0.8s ease-in-out, visibility 0.8s ease-in-out, transform 0.8s ease-in-out;
+}
+body.zen-mode {
+    cursor: none;
+}
+body.zen-mode .player-container,
+body.zen-mode .menu-container,
+body.zen-mode .sidebar,
+body.zen-mode .overlay,
+body.zen-mode .ambient-panel,
+body.zen-mode .top-bar {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 1s ease-in-out;
+}
+
+body.zen-mode .clock {
+    transform: scale(1.4);
+    transition: transform 1s ease-in-out;
+}
+
+body.zen-mode .main-container {
+    padding-top: 300px;
+    transition: opacity 1s ease-in-out;
+}
+/* ... Code cũ giữ nguyên ... */
+
+/* Zen Mode Transitions */
+.player-container, .menu-container, .sidebar, .overlay, .ambient-panel, .top-bar {
+    transition: opacity 0.8s ease-in-out, visibility 0.8s ease-in-out, transform 0.8s ease-in-out;
+}
+body.zen-mode .player-container,
+body.zen-mode .menu-container,
+body.zen-mode .sidebar,
+body.zen-mode .overlay,
+body.zen-mode .ambient-panel,
+body.zen-mode .top-bar {
+    opacity: 0; pointer-events: none; transition: opacity 1s ease-in-out;
+}
+body.zen-mode .clock { transform: scale(1.4); transition: transform 1s ease-in-out; }
+body.zen-mode .main-container { padding-top: 300px; transition: opacity 1s ease-in-out; }
+
+/* mobile */
+@media screen and (max-width: 768px) {
+
+    .clock {
+        font-size: 3.5rem;
+    }
+    body.zen-mode .clock {
+        transform: scale(1.1);
+    }
+
+    body.zen-mode .main-container {
+        padding-top: 150px;
+    }
+}

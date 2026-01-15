@@ -95,7 +95,7 @@ public class UserServlet extends HttpServlet {
         Map<String, Object> responseData = new HashMap<>();
 
         if (user != null) {
-            // 1. Tạo Session
+            //  Session
             HttpSession session = req.getSession(true);
             session.setAttribute("userId", user.getId());
             session.setAttribute("role", user.getRole());
@@ -103,7 +103,7 @@ public class UserServlet extends HttpServlet {
 
             String msg = LanguageUtil.getMessage(req, "auth.login.success");
 
-            // 3. Chuẩn bị dữ liệu trả về
+            // dữ liệu trả về
             responseData.put("status", "success");
             responseData.put("message", msg);
             responseData.put("userId", user.getId());

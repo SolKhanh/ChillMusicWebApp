@@ -1,0 +1,34 @@
+:root {
+    /* Colors */
+    --bg-dark: #121212;
+    --text-primary: #E0E0E0;
+    --text-highlight: #ffffff;
+    --accent-color: #1db954;
+    --accent-hover: #1ed760;
+
+    /* Player Colors */
+    --player-bg: rgba(30, 30, 30, 0.7);
+    --player-border: #2F2F2F;
+
+    /* UI Elements */
+    --glass-bg: rgba(30, 30, 30, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --transition-speed: 0.3s;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body, html {
+    height: 100%;
+    font-family: sans-serif;
+    background-color: transparent;
+    color: var(--text-primary);
+    overflow: hidden;
+}
+
+.main-container {
+    display: flex; justify-content: center;
+    height: 100%; padding-top: 100px;
+    position: relative; z-index: 2;
+    transition: opacity 3s ease-in-out;
+}

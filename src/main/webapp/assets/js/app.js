@@ -1,62 +1,98 @@
 const App = {
     config: {
         contextPath: '/Chillscape',
-
         apiSongs: 'api/songs',
         apiSounds: 'api/sounds',
         apiBackgrounds: 'api/backgrounds',
         imgBaseUrl: 'assets/img/',
+
         backgroundBaseUrl: 'assets/img/backgrounds/',
-        defaultCover: 'assets/img/covers/cover.jpg'
+        defaultCover: 'assets/img/covers/cover.jpg',
+        DEFAULT_BG_INTERVAL: 5 * 60 * 1000,
+        CLOCK_UPDATE_INTERVAL: 1000,
+        INACTIVITY_TIMEOUT: 10000,
     },
+
     state: {
         songs: [],
         sounds: [],
         backgrounds: [],
-
-        // State Player
         currentSongIndex: 0,
-        mainAudio: new Audio(),
-        isPlaying: false,
-        ambientAudios: {},
-
-        // State Background Slide
         currentBgIndex: -1,
-        bgIntervalTime: 10000,
-        bgTimerId: null,
 
-        // State User
+        //  Player (User UI)
+        mainAudio: new Audio(),
+        ambientAudios: {},
+        isPlaying: false,
+        isShuffle: false,
+        repeatMode: 'none',
+        savedVolume: 0.5,
+
+        // Visualizer & Zen
+        isZenMode: false,
+        inactivityTimer: null,
+        audioContext: null,
+        analyser: null,
+        dataArray: null,
+        source: null,
+        animationId: null,
+
+        // Backend/User
+        currentUser: null,
         userBackgrounds: [],
         userSongs: [],
-        collections: []
+        collections: [],
+        bgTimerId: null,
+        bgIntervalTime: 5 * 60 * 1000,
+
+        // upload
+        uploadingCollectionId: null
     },
 
-    // --- UTILS: Các hàm tiện ích dùng chung ---
+    // UTILS
     utils: {
         resolvePath(path) {
-            if (!path || path === 'null') return '';
-            if (path.startsWith('http')) return path;
+            if (!path || path === 'null' || path === "undefined") return "";
+            if (path.startsWith('http') || path.startsWith('blob:') || path.startsWith('data:')) return path;
 
             const ctx = App.config.contextPath || window.CURRENT_CONTEXT || '';
-            return `${ctx}/${path}`.replace(/\/+/g, '/');
+            // Xử lý trường hợp path đã có context hoặc chưa
+            const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+            return `${ctx}/${cleanPath}`.replace(/\/+/g, '/');
         },
         getElement(id) {
             return document.getElementById(id);
         }
     },
 
+    // init
     async init() {
+        console.log("Chillscape đang khởi động...");
+
+        // Load dữ liệu & Auth
         await this.loadData();
         this.Auth.init();
-        this.Sidebar.init();
-        this.startClock();
+
+        // init UI
+        this.initClock();
         this.renderAmbientControls();
-        this.setupMainPlayer();
-        this.handleEvents();
-        this.setupProgressBar();
-        this.setupVolumeControl();
-        this.changeBackground();
+
+        //Sidebar & Playlist
+        this.Sidebar.init();
+
+        // Player & Visualizer
+        this.initMainPlayer();
+        this.initProgressBar();
+        this.initVolumeControl();
+
+        //
         this.startBackgroundSlideshow();
+        this.bindEvents(); // Zen mode, keyboard shortcuts
+        this.initZenMode();
+
+        if (this.state.songs.length > 0) {
+            this.updateSongUI();
+        }
     },
 
     async loadData() {
@@ -65,27 +101,21 @@ const App = {
             const urlSounds = this.utils.resolvePath(this.config.apiSounds);
             const urlBgs = this.utils.resolvePath(this.config.apiBackgrounds);
 
-            const [songs, sounds, bgs] = await Promise.all([
-                fetch(urlSongs).then(r => {
-                    if (!r.ok) throw new Error(`Songs API error: ${r.status}`);
-                    return r.json();
-                }),
-                fetch(urlSounds).then(r => r.json().catch(() => [])),
-                fetch(urlBgs).then(r => r.json().catch(() => []))
+            const [songsRes, soundsRes, bgsRes] = await Promise.all([
+                fetch(urlSongs).then(r => r.ok ? r.json() : []),
+                fetch(urlSounds).then(r => r.ok ? r.json() : []),
+                fetch(urlBgs).then(r => r.ok ? r.json() : [])
             ]);
 
-            this.state.songs = songs || [];
-            this.state.sounds = sounds || [];
-            this.state.backgrounds = bgs || [];
-
-            if (this.state.songs.length > 0) this.updateSongUI();
+            this.state.songs = songsRes || [];
+            this.state.sounds = soundsRes || [];
+            this.state.backgrounds = bgsRes || [];
         } catch (error) {
-            console.error("Lỗi tải dữ liệu (LoadData):", error);
-            this.state.songs = [];
+            console.error("Lỗi tải dữ liệu hệ thống:", error);
         }
     },
 
-    // AUTHENTICATION
+    // auth
     Auth: {
         currentUser: null,
         mode: 'login',
@@ -115,22 +145,13 @@ const App = {
             bind('btn-close-auth', () => this.closeModal());
 
             const switchLink = document.getElementById('switch-auth-link');
-            if (switchLink) {
-                switchLink.onclick = (e) => {
-                    e.preventDefault();
-                    this.switchMode();
-                };
-            }
+            if (switchLink) switchLink.onclick = (e) => { e.preventDefault(); this.switchMode(); };
 
             const form = document.getElementById('auth-form');
             if (form) form.onsubmit = (e) => this.handleSubmit(e);
 
             const overlay = document.getElementById('auth-modal');
-            if (overlay) {
-                overlay.onclick = (e) => {
-                    if (e.target === overlay) this.closeModal();
-                };
-            }
+            if (overlay) overlay.onclick = (e) => { if (e.target === overlay) this.closeModal(); };
 
             document.addEventListener('click', (e) => {
                 const popup = document.getElementById('user-popup');
@@ -145,19 +166,14 @@ const App = {
                 const endpoint = App.utils.resolvePath('api/auth/check');
                 const res = await fetch(endpoint);
                 const contentType = res.headers.get("content-type");
-                if (res.ok && contentType && contentType.indexOf("application/json") !== -1) {
+                if (res.ok && contentType && contentType.includes("json")) {
                     const data = await res.json();
-                    if (data.status === 'success') {
-                        this.onLoginSuccess(data);
-                    } else {
-                        this.onLogoutSuccess();
-                    }
+                    if (data.status === 'success') this.onLoginSuccess(data);
+                    else this.onLogoutSuccess();
                 } else {
                     this.onLogoutSuccess();
                 }
-            } catch (e) {
-                this.onLogoutSuccess();
-            }
+            } catch (e) { this.onLogoutSuccess(); }
         },
 
         async handleSubmit(e) {
@@ -165,46 +181,30 @@ const App = {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const path = this.mode === 'login' ? 'api/auth/login' : 'api/auth/register';
-            const endpoint = App.utils.resolvePath(path);
-
-            const params = new URLSearchParams();
-            params.append('username', username);
-            params.append('password', password);
 
             try {
-                const res = await fetch(endpoint, {
+                const res = await fetch(App.utils.resolvePath(path), {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: params
+                    body: new URLSearchParams({username, password})
                 });
 
+                // Xử lý response text trước để tránh lỗi JSON parse
                 const text = await res.text();
                 let data;
-                try {
-                    data = JSON.parse(text);
-                } catch (err) {
-                    alert("Lỗi Server. Xem console.");
-                    return;
-                }
+                try { data = JSON.parse(text); } catch(err) { alert("Lỗi phản hồi server: " + text); return; }
 
                 if (res.ok && data.status === 'success') {
-                    if (this.mode === 'login') {
-                        this.onLoginSuccess(data);
-                    } else {
-                        alert("Đăng ký thành công! Vui lòng đăng nhập.");
-                        this.switchMode();
-                    }
+                    if (this.mode === 'login') this.onLoginSuccess(data);
+                    else { alert("Đăng ký thành công! Vui lòng đăng nhập."); this.switchMode(); }
                 } else {
-                    alert("Thông báo: " + (data.message || "Thao tác thất bại"));
+                    alert("Thông báo: " + (data.message || "Thất bại"));
                 }
-            } catch (e) {
-                alert("Lỗi kết nối server");
-            }
+            } catch (e) { alert("Lỗi kết nối server"); }
         },
 
         async logout() {
-            const endpoint = App.utils.resolvePath('api/auth/logout');
-            await fetch(endpoint, {method: 'POST'});
+            await fetch(App.utils.resolvePath('api/auth/logout'), {method: 'POST'});
             this.onLogoutSuccess();
         },
 
@@ -223,32 +223,42 @@ const App = {
             App.Sidebar.loadUserContent();
         },
 
-        onLogoutSuccess() {
+        // rs data khi logout
+        async onLogoutSuccess() {
             this.currentUser = null;
             App.state.currentUser = null;
             document.getElementById('login-status-dot').style.display = 'none';
             document.getElementById('guest-view').style.display = 'block';
             document.getElementById('user-view').style.display = 'none';
 
+            // Reset dữ liệu user
             App.state.userBackgrounds = [];
-            App.state.userPlaylists = [];
+            App.state.collections = [];
+
+            // Dừng nhạc & Reset Player
+            App.state.isPlaying = false;
+            App.state.mainAudio.pause();
+            App.updatePlayerControls();
+
+            // Load lại dữ liệu
+            await App.loadData();
+
+            // Reset giao diện về mặc định
+            if (App.state.songs.length > 0) App.loadSong(0);
             App.Sidebar.render();
-        },
 
-        togglePopup() {
-            const popup = document.getElementById('user-popup');
-            if (popup) popup.classList.toggle('active');
+            // Đóng popup user
+            document.getElementById('user-popup').classList.remove('active');
         },
-
+        togglePopup() { document.getElementById('user-popup')?.classList.toggle('active'); },
         showModal(mode) {
             this.mode = mode;
-            const modal = document.getElementById('auth-modal');
+            document.getElementById('auth-modal')?.classList.add('active');
+            document.getElementById('user-popup')?.classList.remove('active');
+
             const title = document.getElementById('auth-title');
             const switchTxt = document.getElementById('switch-auth-text');
             const switchLink = document.getElementById('switch-auth-link');
-
-            if (modal) modal.classList.add('active');
-            document.getElementById('user-popup').classList.remove('active');
 
             if (mode === 'login') {
                 if (title) title.innerText = 'Đăng Nhập';
@@ -260,20 +270,16 @@ const App = {
                 if (switchLink) switchLink.innerText = 'Đăng nhập';
             }
         },
-
-        closeModal() {
-            document.getElementById('auth-modal').classList.remove('active');
-        },
-        switchMode() {
-            this.showModal(this.mode === 'login' ? 'register' : 'login');
-        }
+        closeModal() { document.getElementById('auth-modal')?.classList.remove('active'); },
+        switchMode() { this.showModal(this.mode === 'login' ? 'register' : 'login'); }
     },
 
-    // SIDEBAR
+    // sidebar
     Sidebar: {
         init() {
             this.setupToggle();
-            this.setupTabs();
+            this.setupTabs(); // Từ User
+            this.setupUploadModal();
             this.render();
         },
 
@@ -281,124 +287,131 @@ const App = {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('overlay');
             const toggle = (show) => {
-                sidebar.classList.toggle('active', show);
-                overlay.classList.toggle('active', show);
+                sidebar?.classList.toggle('active', show);
+                overlay?.classList.toggle('active', show);
             };
 
             const menuBtn = document.querySelector('.menu-container') || document.getElementById('menu-btn');
             if (menuBtn) menuBtn.onclick = () => toggle(true);
-            if (document.getElementById('close-sidebar-btn')) document.getElementById('close-sidebar-btn').onclick = () => toggle(false);
+            const closeBtn = document.getElementById('close-sidebar-btn');
+            if (closeBtn) closeBtn.onclick = () => toggle(false);
             if (overlay) overlay.onclick = () => toggle(false);
         },
 
         setupTabs() {
             const tabs = document.querySelectorAll('.tab-btn');
             tabs.forEach(tab => {
-                tab.addEventListener('click', () => {
+                tab.onclick = () => {
                     document.querySelectorAll('.tab-btn, .tab-pane').forEach(el => el.classList.remove('active'));
                     tab.classList.add('active');
-                    const target = document.getElementById(`tab-${tab.dataset.tab}`);
-                    if (target) target.classList.add('active');
-                });
+                    document.getElementById(`tab-${tab.dataset.tab}`)?.classList.add('active');
+                };
             });
+        },
+
+        setupUploadModal() {
+            const modal = document.getElementById('upload-song-modal');
+            const closeBtn = document.getElementById('btn-close-upload');
+            const form = document.getElementById('upload-song-form');
+            const overlay = document.getElementById('upload-song-modal');
+
+            if (closeBtn) closeBtn.onclick = () => modal?.classList.remove('active');
+            if (overlay) overlay.onclick = (e) => { if(e.target === overlay) modal?.classList.remove('active'); };
+
+            if (form) {
+                form.onsubmit = async (e) => {
+                    e.preventDefault();
+                    await this.handleSongUploadSubmit();
+                };
+            }
         },
 
         async loadUserContent() {
             if (!App.Auth.currentUser) {
-                App.state.userSongs = [];
-                App.state.userBackgrounds = [];
                 App.state.collections = [];
                 this.render();
                 return;
             }
-
             try {
-                const endpoint = App.utils.resolvePath('api/collections');
-                const res = await fetch(endpoint);
+                const res = await fetch(App.utils.resolvePath('api/collections'));
                 if (res.ok) {
                     const data = await res.json();
                     if (data.status === 'success') {
-                        const rawMyCols = data.myCollections.map(c => ({...c, type: 'OWNER'}));
-                        const rawFollowedCols = data.followedCollections.map(c => ({...c, type: 'SUBSCRIBER'}));
+                        const myCols = (data.myCollections || []).map(c => ({...c, type: 'OWNER'}));
+                        const followCols = (data.followedCollections || []).map(c => ({...c, type: 'SUBSCRIBER'}));
 
-                        App.state.collections = [...rawMyCols, ...rawFollowedCols];
-
-                        App.state.collections.forEach(col => {
-                            if (col.songs && Array.isArray(col.songs)) {
-                                col.songs = col.songs.map(s => ({
-                                    id: s.id,
-                                    title: s.title,
-                                    artist: s.artist,
-                                    filePath: s.filePath,
-                                    coverImage: s.coverImage || s.cover || App.config.defaultCover
-                                }));
-                            } else {
-                                col.songs = [];
-                            }
-
-                            if (col.backgrounds && Array.isArray(col.backgrounds)) {
-                                col.backgrounds = col.backgrounds.map(b => ({
-                                    id: b.id,
-                                    name: b.name,
-                                    isAnimated: b.isAnimated
-                                }));
-                            } else {
-                                col.backgrounds = [];
-                            }
-                        });
-
-                        // let allUserBgs = [];
-                        // App.state.collections.forEach(col => {
-                        //     if (col.backgrounds && Array.isArray(col.backgrounds)) {
-                        //         allUserBgs = [...allUserBgs, ...col.backgrounds];
-                        //     }
-                        // });
-                        // App.state.userBackgrounds = allUserBgs;
-                        //
-                        // let allUserSongs = [];
-                        // App.state.collections.forEach(col => {
-                        //     if (col.songs && Array.isArray(col.songs)) {
-                        //         const mappedSongs = col.songs.map(s => ({
-                        //             id: s.id,
-                        //             title: s.title,
-                        //             artist: s.artist,
-                        //             filePath: s.filePath,
-                        //             coverImage: s.coverImage || s.cover || App.config.defaultCover
-                        //         }));
-                        //         allUserSongs.push(...mappedSongs);
-                        //     }
-                        // });
-
-                        // const uniqueSongs = [];
-                        // const seenIds = new Set();
-                        // allUserSongs.forEach(song => {
-                        //     if (!seenIds.has(song.id)) {
-                        //         seenIds.add(song.id);
-                        //         uniqueSongs.push(song);
-                        //     }
-                        // });
-
-                        // App.state.userSongs = uniqueSongs;
+                        // Chuẩn hóa dữ liệu
+                        App.state.collections = [...myCols, ...followCols].map(col => ({
+                            ...col,
+                            songs: (col.songs || []).map(s => ({
+                                id: s.id,
+                                title: s.title,
+                                artist: s.artist,
+                                filePath: s.filePath,
+                                coverImage: s.coverImage || s.cover || App.config.defaultCover
+                            })),
+                            backgrounds: (col.backgrounds || []).map(b => ({
+                                id: b.id, name: b.name
+                            }))
+                        }));
                         this.render();
                     }
                 }
-            } catch (e) {
-                console.error("Lỗi tải collection:", e);
-            }
+            } catch (e) { console.error("Lỗi tải collection:", e); }
         },
 
         render() {
-            this.renderShelf('bg-shelf-default', App.state.backgrounds, 'background');
-            this.renderShelf('playlist-shelf-default', App.state.songs, 'song');
+            // Render kệ mặc định (System) - không có nút add
+            this.renderShelf('bg-shelf', App.state.backgrounds, 'background', false);
+            this.renderShelf('album-shelf', App.state.songs, 'song', false);
 
+            // Render User Actions (Tạo & Nhập mã)
+            this.renderUserActions();
+
+            // Render kệ User (Collection)
             const myCols = App.state.collections.filter(c => c.type === 'OWNER');
             const followCols = App.state.collections.filter(c => c.type === 'SUBSCRIBER');
 
             this.renderCollectionGroup('playlist-container-owner', myCols, 'song');
             this.renderCollectionGroup('playlist-container-subscriber', followCols, 'song');
-
             this.renderCollectionGroup('bg-container-owner', myCols, 'background');
             this.renderCollectionGroup('bg-container-subscriber', followCols, 'background');
+        },
+
+        // tạo và nhập mã
+        renderUserActions() {
+            // Tìm container của tab Playlists (Albums)
+            const container = document.getElementById('tab-albums'); // ID trong jsp
+            if (!container) return;
+
+            // tránh trùng
+            const oldActions = document.getElementById('user-collection-actions');
+            if (oldActions) oldActions.remove();
+
+            // Chỉ hiện khi đăng nhập
+            if (!App.Auth.currentUser) return;
+
+            const actionDiv = document.createElement('div');
+            actionDiv.id = 'user-collection-actions';
+            actionDiv.style.cssText = "display:flex; gap:10px; padding:0 0 20px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:20px;";
+
+            const btnCreate = document.createElement('button');
+            btnCreate.className = 'auth-btn';
+            btnCreate.style.cssText = "font-size: 0.8rem; padding: 8px; flex: 1;";
+            btnCreate.innerHTML = '<i class="fa-solid fa-plus"></i> Tạo Mới';
+            btnCreate.onclick = () => this.handleCreateCollection();
+
+            const btnJoin = document.createElement('button');
+            btnJoin.className = 'auth-btn outline';
+            btnJoin.style.cssText = "font-size: 0.8rem; padding: 8px; flex: 1;";
+            btnJoin.innerHTML = '<i class="fa-solid fa-link"></i> Nhập Mã';
+            btnJoin.onclick = () => this.handleFollowCollection();
+
+            actionDiv.appendChild(btnCreate);
+            actionDiv.appendChild(btnJoin);
+
+            // Chèn vào đầu tab
+            container.insertBefore(actionDiv, container.firstChild);
         },
 
         renderCollectionGroup(containerId, collections, itemType) {
@@ -406,250 +419,272 @@ const App = {
             if (!container) return;
             container.innerHTML = '';
 
-            const validCollections = collections;
-
-            if (validCollections.length === 0 && !containerId.includes('owner')) {
-                return;
-            }
+            if (collections.length === 0) return;
 
             const groupHeader = document.createElement('h4');
-            groupHeader.style.cssText = "padding: 0 15px; margin-bottom: 10px; opacity: 0.8; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;";
+            groupHeader.style.cssText = "padding: 0 15px; margin-bottom: 10px; opacity: 0.8; font-size: 0.8rem; text-transform: uppercase;";
             groupHeader.innerText = containerId.includes('owner') ? "Của tôi" : "Đã theo dõi";
             container.appendChild(groupHeader);
 
-            validCollections.forEach(col => {
-                const dataList = (itemType === 'background') ? (col.backgrounds || []) : (col.songs || []);
-
+            collections.forEach(col => {
+                const dataList = (itemType === 'background') ? col.backgrounds : col.songs;
                 if (col.type !== 'OWNER' && dataList.length === 0) return;
 
                 const sectionDiv = document.createElement('div');
                 sectionDiv.className = 'shelf-section';
 
-                const title = document.createElement('h3');
-                title.className = 'shelf-title';
-                title.innerHTML = `${col.name} <span style="font-size:0.7em; opacity:0.6; font-weight: normal; margin-left: 5px;">(${dataList.length})</span>`;
+                // Tiêu đề + Mã chia sẻ
+                let titleHtml = `<h3 class="shelf-title" style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span>${col.name} <small style="opacity:0.6; font-size:0.8em">(${dataList.length})</small></span>`;
+
+                if (col.type === 'OWNER') {
+                    titleHtml += `<span style="font-size:0.7em; font-weight:normal; cursor:pointer; background:rgba(255,255,255,0.1); padding:4px 8px; border-radius:4px;" 
+                                        title="Click để sao chép mã"
+                                        onclick="navigator.clipboard.writeText('${col.shareCode}'); alert('Đã sao chép mã: ${col.shareCode}')">
+                                        <i class="fa-solid fa-share-nodes"></i> ${col.shareCode}
+                                  </span>`;
+                }
+                titleHtml += `</h3>`;
+                sectionDiv.innerHTML = titleHtml;
 
                 const shelfDiv = document.createElement('div');
                 shelfDiv.className = 'shelf-scroll';
+                shelfDiv.style.display = 'flex';
+                shelfDiv.style.gap = '15px';
+                shelfDiv.style.overflowX = 'auto';
+                shelfDiv.style.padding = '10px 0';
 
-                const uniqueShelfId = `shelf-${itemType}-col-${col.id}`;
-                shelfDiv.id = uniqueShelfId;
+                const uniqueId = `shelf-${itemType}-col-${col.id}`;
+                shelfDiv.id = uniqueId;
 
-                sectionDiv.appendChild(title);
                 sectionDiv.appendChild(shelfDiv);
                 container.appendChild(sectionDiv);
 
-                const isOwner = (col.type === 'OWNER');
-                this.renderShelf(uniqueShelfId, dataList, itemType, isOwner, col.id);
+                this.renderShelf(uniqueId, dataList, itemType, col.type === 'OWNER', col.id);
             });
         },
 
         renderShelf(containerId, dataList, type, isUserShelf = false, collectionId = null) {
             const container = document.getElementById(containerId);
-            if (!container) return;
+            const targetContainer = container || (containerId === 'bg-shelf-default' ? document.getElementById('bg-shelf') :
+                containerId === 'playlist-shelf-default' ? document.getElementById('album-shelf') : null);
 
-            container.innerHTML = '';
+            if (!targetContainer) return;
+            targetContainer.innerHTML = '';
 
-            // Nút Add
+            // btn add (chỉ khi đăng nhập)
             if (isUserShelf) {
-                container.appendChild(this.createAddButton(type, collectionId));
+                const addDiv = document.createElement('div');
+                addDiv.className = 'shelf-item add-new';
+                addDiv.innerHTML = `<i class="fa-solid fa-plus"></i>`;
+                addDiv.style.display = 'flex';
+                addDiv.style.justifyContent = 'center';
+                addDiv.style.alignItems = 'center';
+                addDiv.style.fontSize = '24px';
+
+                addDiv.onclick = () => this.handleUploadClick(type, collectionId);
+                targetContainer.appendChild(addDiv);
             }
 
-            if (!dataList || dataList.length === 0) return;
-
-            const fragment = document.createDocumentFragment();
+            if (!dataList) return;
 
             dataList.forEach((item, index) => {
                 const div = document.createElement('div');
                 div.className = 'shelf-item';
 
                 let imgSrc = '';
-                let title = '';
-
                 if (type === 'background') {
-                    const bgName = item.name || item;
+                    const bgName = item.name || item.fileName || item;
                     imgSrc = App.utils.resolvePath(App.config.backgroundBaseUrl + bgName);
-                    title = "Bg " + (index + 1);
-                } else if (type === 'song') {
+                } else {
                     const cover = item.coverImage || item.cover || App.config.defaultCover;
                     imgSrc = App.utils.resolvePath(cover);
-                    title = item.title;
                 }
 
-                div.innerHTML = `<img src="${imgSrc}" loading="lazy" alt="${title}">`;
+                div.innerHTML = `<img src="${imgSrc}" loading="lazy">`;
 
-                // --- XỬ LÝ CLICK ---
+                // Nút Delete (Chỉ hiện khi là Owner)
+                if (isUserShelf) {
+                    const delBtn = document.createElement('div');
+                    delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+                    delBtn.style.cssText = "position:absolute; top:5px; right:5px; background:rgba(0,0,0,0.7); color:#ff5555; width:25px; height:25px; display:flex; align-items:center; justify-content:center; border-radius:50%; cursor:pointer; z-index:10; opacity:0; transition:0.2s;";
+
+                    div.onmouseenter = () => delBtn.style.opacity = '1';
+                    div.onmouseleave = () => delBtn.style.opacity = '0';
+
+                    delBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        if(confirm("Bạn có chắc muốn xóa không?")) {
+                            this.handleDeleteItem(type, collectionId, item.id);
+                        }
+                    };
+                    div.appendChild(delBtn);
+                }
+
                 div.onclick = () => {
                     if (type === 'background') {
-                        App.state.backgrounds = dataList;
-
-                        const newIndex = App.state.backgrounds.indexOf(item);
-
-                        App.state.currentBgIndex = newIndex - 1;
+                        if (App.state.backgrounds !== dataList) App.state.backgrounds = dataList;
+                        const realIndex = dataList.indexOf(item);
+                        App.state.currentBgIndex = realIndex - 1;
                         App.changeBackground();
                         App.startBackgroundSlideshow();
-
-                    } else if (type === 'song') {
-                        App.state.songs = dataList;
-
-                        let newIndex = App.state.songs.findIndex(s => s.id === item.id);
-                        if (newIndex === -1) newIndex = index;
-
-                        if (newIndex !== -1) {
-                            App.loadSong(newIndex);
-                        }
+                    } else {
+                        if (App.state.songs !== dataList) App.state.songs = dataList;
+                        let playIndex = index;
+                        if (item.id) playIndex = App.state.songs.findIndex(s => s.id === item.id);
+                        App.loadSong(playIndex);
                     }
                 };
-
-                fragment.appendChild(div);
+                targetContainer.appendChild(div);
             });
-
-            container.appendChild(fragment);
         },
 
-        createAddButton(type, collectionId) {
-            const div = document.createElement('div');
-            div.className = 'shelf-item add-new';
-            div.innerHTML = `<i class="fa-solid fa-plus"></i>`;
-            div.onclick = () => this.handleUploadClick(type, collectionId);
-            return div;
-        },
-
-        getUniquePlaylists(songs) {
-            const unique = [];
-            const seen = new Set();
-            songs.forEach((song, idx) => {
-                const key = song.album || song.title;
-                if (!seen.has(key)) {
-                    seen.add(key);
-                    unique.push({...song, originalIndex: idx});
-                }
-            });
-            return unique;
-        },
-
-        handleUploadClick(type, collectionId = null) {
-            if (!App.Auth.currentUser) {
-                App.Auth.showModal('login');
-                return;
+        // Upload lên Server
+        handleUploadClick(type, collectionId) {
+            if (type === 'background') {
+                const fileInput = document.getElementById('upload-input');
+                if(!fileInput) return;
+                fileInput.value = '';
+                fileInput.click();
+                fileInput.onchange = (e) => this.handleBackgroundUpload(e, collectionId);
+            } else if (type === 'song') {
+                App.state.uploadingCollectionId = collectionId;
+                document.getElementById('upload-song-form').reset();
+                document.getElementById('upload-song-modal').classList.add('active');
             }
-            if (!collectionId) {
-                const myCollections = App.state.collections.filter(c => c.type === 'OWNER');
-                if (myCollections.length === 0) {
-                    alert("Bạn chưa có Bộ sưu tập nào.");
-                    return;
-                }
-                if (myCollections.length === 1) {
-                    collectionId = myCollections[0].id;
+        },
+
+        async handleBackgroundUpload(e, collectionId) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('collectionId', collectionId);
+
+            try {
+                const res = await fetch(App.utils.resolvePath('api/upload/background'), {method: 'POST', body: formData});
+                const data = await res.json();
+                if (res.ok && data.status === 'success') {
+                    alert("Upload ảnh thành công!");
+                    this.loadUserContent();
+                } else alert("Lỗi: " + data.message);
+            } catch (err) { alert("Lỗi kết nối."); }
+        },
+
+        async handleSongUploadSubmit() {
+            const collectionId = App.state.uploadingCollectionId;
+            const songFile = document.getElementById('song-file').files[0];
+            const coverFile = document.getElementById('song-cover').files[0];
+            const title = document.getElementById('song-title').value;
+            const artist = document.getElementById('song-artist').value;
+
+            if (!songFile) { alert("Vui lòng chọn file nhạc!"); return; }
+
+            const formData = new FormData();
+            formData.append('collectionId', collectionId);
+            formData.append('file', songFile);
+            if (coverFile) formData.append('cover', coverFile);
+            formData.append('title', title);
+            formData.append('artist', artist);
+
+            const btn = document.querySelector('#upload-song-form .submit-btn');
+            const originalText = btn.innerText;
+            btn.innerText = "Đang tải lên...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(App.utils.resolvePath('api/upload/song'), {method: 'POST', body: formData});
+                const data = await res.json();
+
+                if (res.ok && data.status === 'success') {
+                    alert("Thêm bài hát thành công!");
+                    document.getElementById('upload-song-modal').classList.remove('active');
+                    this.loadUserContent();
                 } else {
-                    let msg = "Nhập ID Bộ sưu tập:\n" + myCollections.map(c => `[${c.id}] ${c.name}`).join('\n');
-                    const input = prompt(msg);
-                    if (!input) return;
-                    collectionId = parseInt(input);
+                    alert("Lỗi: " + (data.message || "Không thể upload"));
                 }
+            } catch (err) {
+                console.error(err);
+                alert("Lỗi kết nối đến server.");
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
             }
-
-            const fileInput = document.getElementById('upload-input');
-            fileInput.value = '';
-            fileInput.click();
-
-            fileInput.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('collectionId', collectionId);
-
-                let endpointPath = '';
-                if (type === 'background') endpointPath = 'api/upload/background';
-                else if (type === 'song') {
-                    const defaultTitle = file.name.replace(/\.[^/.]+$/, "");
-                    const title = prompt("Tên bài hát:", defaultTitle) || defaultTitle;
-                    const artist = prompt("Tên nghệ sĩ:", "Unknown") || "Unknown";
-                    formData.append('title', title);
-                    formData.append('artist', artist);
-                    endpointPath = 'api/upload/song';
-                }
-
-                try {
-                    const res = await fetch(App.utils.resolvePath(endpointPath), {method: 'POST', body: formData});
-                    const data = await res.json();
-
-                    if (res.ok && data.status === 'success') {
-                        const targetCol = App.state.collections.find(c => c.id === collectionId);
-
-                        if (type === 'background') {
-                            const newBg = {id: data.id, name: data.fileName};
-                            if (!targetCol.backgrounds) targetCol.backgrounds = [];
-                            targetCol.backgrounds.push(newBg);
-                            App.state.userBackgrounds.push(newBg);
-                            alert("Upload ảnh thành công!");
-                        } else if (type === 'song') {
-                            const newSong = {
-                                id: data.id,
-                                title: data.title || "No Title",
-                                artist: data.artist || "Unknown",
-                                filePath: data.filePath,
-                                cover: 'assets/img/covers/cover.jpg'
-                            };
-                            if (!targetCol.songs) targetCol.songs = [];
-                            targetCol.songs.push(newSong);
-                            const uiPl = App.state.userPlaylists.find(a => a.id === collectionId);
-                            if (uiPl) {
-                                if (!uiPl.songs) uiPl.songs = [];
-                                uiPl.songs.push(newSong);
-                            }
-                            alert("Upload nhạc thành công!");
-                        }
-                        this.render();
-                    } else {
-                        alert("Lỗi: " + data.message);
-                    }
-                } catch (err) {
-                    alert("Lỗi kết nối.");
-                }
-            };
         },
+
+        async handleDeleteItem(type, colId, itemId) {
+            const itemType = (type === 'song') ? 'song' : 'background';
+            try {
+                const res = await fetch(App.utils.resolvePath(`api/collections/delete/${itemType}/${colId}/${itemId}`), {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    this.loadUserContent();
+                } else alert("Lỗi xóa: " + data.message);
+            } catch (e) { alert("Lỗi kết nối server"); }
+        },
+
+        async handleCreateCollection() {
+            if (!App.Auth.currentUser) return App.Auth.showModal('login');
+            const name = prompt("Nhập tên Bộ sưu tập mới:");
+            if (!name) return;
+            try {
+                const res = await fetch(App.utils.resolvePath('api/collections/create'), {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({name})
+                });
+                const data = await res.json();
+                if (data.status === 'success') this.loadUserContent();
+                else alert(data.message || "Lỗi tạo collection");
+            } catch(e) { alert("Lỗi kết nối"); }
+        },
+
+        async handleFollowCollection() {
+            if (!App.Auth.currentUser) return App.Auth.showModal('login');
+            const code = prompt("Nhập Mã chia sẻ (Share Code):");
+            if (!code) return;
+            try {
+                const res = await fetch(App.utils.resolvePath('api/collections/follow'), {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({shareCode: code})
+                });
+                const data = await res.json();
+                if (data.status === 'success') this.loadUserContent();
+                else alert(data.message || "Lỗi follow collection");
+            } catch(e) { alert("Lỗi kết nối"); }
+        }
     },
 
-    // PLAYER & LOGIC KHÁC
-    startClock() {
-        const update = () => {
-            const now = new Date();
-            let hours = now.getHours();
-            const minutes = now.getMinutes().toString().padStart(2, '0');
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12 || 12;
-            const clock = document.getElementById('clock');
-            if (clock) clock.innerHTML = `${hours}:${minutes} <span style="font-size: 0.5em; vertical-align: middle;">${ampm}</span>`;
+    // player
+    initMainPlayer() {
+        if (this.state.songs.length > 0) {
+            this.loadSong(0);
+        }
+        this.state.mainAudio.onended = () => {
+            if (this.state.repeatMode === 'one') this.state.mainAudio.play();
+            else this.nextSong();
         };
-        setInterval(update, 1000);
-        update();
-    },
-
-    setupMainPlayer() {
-        if (this.state.songs.length > 0) this.loadSong(0);
-        this.state.mainAudio.onended = () => this.nextSong();
     },
 
     loadSong(index) {
-        if (index >= this.state.songs.length) index = 0;
-
-        this.state.currentSongIndex = index;
+        if (index < 0 || index >= this.state.songs.length) index = 0;
         const song = this.state.songs[index];
         if (!song) return;
 
-        this.state.mainAudio.src = App.utils.resolvePath(song.filePath);
+        this.state.currentSongIndex = index;
+        //  Dùng resolvePath để lấy đường dẫn đúng
+        this.state.mainAudio.src = this.utils.resolvePath(song.filePath);
+        this.state.mainAudio.crossOrigin = "anonymous";
+
         this.updateSongUI();
 
-        const playBtn = document.querySelector('.play-pause-btn');
         if (this.state.isPlaying) {
-            this.state.mainAudio.play().catch(e => console.error("Auto-play blocked", e));
-            if (playBtn) playBtn.innerHTML = '<i class="fas fa-pause"></i>';
-        } else {
-            if (playBtn) playBtn.innerHTML = '<i class="fas fa-play"></i>';
+            this.state.mainAudio.play().catch(() => console.warn("Chặn tự phát"));
         }
+        this.updatePlayerControls();
     },
 
     updateSongUI() {
@@ -661,162 +696,274 @@ const App = {
         if (titleEl) titleEl.innerText = song.title;
         if (artistEl) artistEl.innerText = song.artist;
 
-        const rawCover = song.coverImage || song.cover;
+        const coverPath = song.coverImage || song.cover || this.config.defaultCover;
+        const fullPath = this.utils.resolvePath(coverPath);
 
-        const coverSrc = (!rawCover || rawCover === 'null')
-            ? App.utils.resolvePath(this.config.defaultCover)
-            : App.utils.resolvePath(rawCover);
-
-        const coverEl = document.querySelector('.vn-cover img');
-        const labelEl = document.querySelector('.vn-print img');
-        const bgBlur = document.querySelector('.background-blur');
-
-        if (coverEl) coverEl.src = coverSrc;
-        if (labelEl) labelEl.src = coverSrc;
-        if (bgBlur) bgBlur.src = coverSrc;
+        document.querySelectorAll('.vn-cover img, .vn-print img, .background-blur').forEach(img => {
+            img.src = fullPath;
+        });
     },
 
     nextSong() {
-        let newIndex = (this.state.currentSongIndex + 1) % this.state.songs.length;
-        this.loadSong(newIndex);
+        let nextIdx;
+        if (this.state.isShuffle) {
+            nextIdx = Math.floor(Math.random() * this.state.songs.length);
+        } else {
+            nextIdx = (this.state.currentSongIndex + 1) % this.state.songs.length;
+            // Nếu hết list và không lặp -> dừng
+            if (nextIdx === 0 && this.state.repeatMode === 'none') {
+                this.state.isPlaying = false;
+                this.state.mainAudio.pause();
+                this.updatePlayerControls();
+                return;
+            }
+        }
+        this.loadSong(nextIdx);
     },
 
     prevSong() {
-        let newIndex = (this.state.currentSongIndex - 1 + this.state.songs.length) % this.state.songs.length;
-        this.loadSong(newIndex);
+        const prevIdx = (this.state.currentSongIndex - 1 + this.state.songs.length) % this.state.songs.length;
+        this.loadSong(prevIdx);
     },
 
-    handleEvents() {
+    updatePlayerControls() {
         const playBtn = document.querySelector('.play-pause-btn');
-        if (playBtn) playBtn.onclick = () => {
+        if (playBtn) playBtn.innerHTML = this.state.isPlaying ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
+
+        const shuffleBtn = document.querySelector('.shuffle-btn');
+        if (shuffleBtn) shuffleBtn.classList.toggle('active', this.state.isShuffle);
+
+        const repeatBtn = document.querySelector('.repeat-btn');
+        if (repeatBtn) {
+            const mode = this.state.repeatMode;
+            repeatBtn.classList.toggle('active', mode !== 'none');
+            if (mode === 'one') repeatBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i><span style="font-size:10px">1</span>';
+            else repeatBtn.innerHTML = '<i class="fa-solid fa-repeat"></i>';
+        }
+    },
+
+    // VISUALIZER
+    initVisualizer() {
+        if (this.state.audioContext) return;
+        this.state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        this.state.analyser = this.state.audioContext.createAnalyser();
+        this.state.source = this.state.audioContext.createMediaElementSource(this.state.mainAudio);
+        this.state.source.connect(this.state.analyser);
+        this.state.analyser.connect(this.state.audioContext.destination);
+        this.state.analyser.fftSize = 256;
+        this.state.dataArray = new Uint8Array(this.state.analyser.frequencyBinCount);
+        this.drawVisualizer();
+    },
+
+    drawVisualizer() {
+        const canvas = document.getElementById('visualizer-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        const renderFrame = () => {
+            this.state.animationId = requestAnimationFrame(renderFrame);
+            this.state.analyser.getByteFrequencyData(this.state.dataArray);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const barWidth = (canvas.width / this.state.dataArray.length) * 2.5;
+            let x = 0;
+            for (let i = 0; i < this.state.dataArray.length; i++) {
+                const barHeight = (this.state.dataArray[i] / 255) * canvas.height;
+                ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + (barHeight / canvas.height)})`;
+                ctx.fillRect(x, canvas.height - barHeight, barWidth - 1, barHeight);
+                x += barWidth;
+            }
+        };
+        renderFrame();
+    },
+
+    initProgressBar() {
+        const slider = document.getElementById('progress-slider');
+        const audio = this.state.mainAudio;
+        if (!slider) return;
+
+        audio.addEventListener('loadedmetadata', () => {
+            if(isFinite(audio.duration)) {
+                slider.max = audio.duration;
+                document.querySelector('.duration').innerText = this.formatTime(audio.duration);
+            }
+        });
+        audio.addEventListener('timeupdate', () => {
+            if (!slider.matches(':active')) slider.value = audio.currentTime;
+            document.querySelector('.current-time').innerText = this.formatTime(audio.currentTime);
+        });
+        slider.oninput = (e) => audio.currentTime = e.target.value;
+    },
+
+    initVolumeControl() {
+        const slider = document.getElementById('volume-slider');
+        const icon = document.getElementById('volume-icon');
+        const audio = this.state.mainAudio;
+        if (!slider) return;
+
+        const apply = (val) => {
+            audio.volume = val;
+            slider.value = val;
+            icon.className = `fa-solid ${val === 0 ? 'fa-volume-xmark' : (val < 0.5 ? 'fa-volume-low' : 'fa-volume-high')}`;
+        };
+        slider.oninput = (e) => apply(parseFloat(e.target.value));
+        icon.onclick = () => {
+            if (audio.volume > 0) { this.state.savedVolume = audio.volume; apply(0); }
+            else apply(this.state.savedVolume || 0.5);
+        };
+    },
+
+    // slideshow cho bg
+    startBackgroundSlideshow() {
+        this.stopBackgroundSlideshow();
+        if (this.state.currentBgIndex === -1) this.changeBackground();
+        this.state.bgTimerId = setInterval(() => this.changeBackground(), this.state.bgIntervalTime);
+    },
+    stopBackgroundSlideshow() {
+        if (this.state.bgTimerId) clearInterval(this.state.bgTimerId);
+        this.state.bgTimerId = null;
+    },
+    changeBackground() {
+        const bgs = this.state.backgrounds;
+        if (!bgs || bgs.length === 0) return;
+        this.state.currentBgIndex = (this.state.currentBgIndex + 1) % bgs.length;
+
+        const item = bgs[this.state.currentBgIndex];
+        const bgName = item.name || item.fileName || item;
+        const path = this.utils.resolvePath(this.config.backgroundBaseUrl + bgName);
+
+        this.applyBackgroundToUI(path);
+    },
+    applyBackgroundToUI(path) {
+        const container = document.getElementById('background-container');
+        if (container) {
+            const img = new Image();
+            img.onload = () => { container.style.backgroundImage = `url('${path}')`; };
+            img.src = path;
+        }
+    },
+
+    // local update (User - Preview nhanh)
+    handleLocalUpload(type) {
+        const fileInput = document.getElementById('upload-input');
+        if (!fileInput) return;
+        fileInput.accept = "image/*";
+        fileInput.value = '';
+        fileInput.click();
+
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const localUrl = URL.createObjectURL(file);
+                if (type === 'background') {
+                    this.applyBackgroundToUI(localUrl);
+                    this.stopBackgroundSlideshow();
+                } else {
+                    // Update cover tạm thời
+                    document.querySelectorAll('.vn-cover img, .vn-print img').forEach(img => img.src = localUrl);
+                }
+            }
+        };
+    },
+
+    // zen mode & UI
+    initZenMode() {
+        const resetTimer = () => {
+            if (this.state.isZenMode) this.toggleZenMode(false);
+            clearTimeout(this.state.inactivityTimer);
+            this.state.inactivityTimer = setTimeout(() => this.toggleZenMode(true), this.config.INACTIVITY_TIMEOUT);
+        };
+        ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(evt => document.addEventListener(evt, resetTimer, true));
+        resetTimer();
+    },
+    toggleZenMode(forceState) {
+        this.state.isZenMode = forceState !== undefined ? forceState : !this.state.isZenMode;
+        document.body.classList.toggle('zen-mode', this.state.isZenMode);
+    },
+    initClock() {
+        const el = document.getElementById('clock');
+        if (!el) return;
+        const update = () => {
+            const now = new Date();
+            let h = now.getHours();
+            const m = now.getMinutes().toString().padStart(2, '0');
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            el.innerHTML = `${h % 12 || 12}:${m} <span class="am-pm">${ampm}</span>`;
+        };
+        setInterval(update, this.config.CLOCK_UPDATE_INTERVAL);
+        update();
+    },
+    renderAmbientControls() {
+        const container = document.getElementById('ambient-sounds-panel');
+        if (!container) return;
+        container.innerHTML = '';
+        this.state.sounds.forEach(sound => {
+            const audio = new Audio(this.utils.resolvePath(sound.filePath));
+            audio.loop = true; audio.volume = 0;
+            this.state.ambientAudios[sound.id] = audio;
+
+            const div = document.createElement('div');
+            div.className = 'ambient-control';
+            div.innerHTML = `
+                <div class="ambient-info"><i class="fa-solid ${sound.iconClass || 'fa-music'}"></i><span>${sound.name}</span></div>
+                <input type="range" class="ambient-slider" min="0" max="1" step="0.01" value="0" data-id="${sound.id}">
+            `;
+            container.appendChild(div);
+        });
+    },
+
+    bindEvents() {
+        const playBtn = document.querySelector('.play-pause-btn');
+        if(playBtn) playBtn.onclick = () => {
+            this.initVisualizer();
+            if (this.state.audioContext.state === 'suspended') this.state.audioContext.resume();
+
             if (this.state.mainAudio.paused) {
                 this.state.mainAudio.play();
                 this.state.isPlaying = true;
-                playBtn.innerHTML = '<i class="fas fa-pause"></i>';
             } else {
                 this.state.mainAudio.pause();
                 this.state.isPlaying = false;
-                playBtn.innerHTML = '<i class="fas fa-play"></i>';
             }
+            this.updatePlayerControls();
         };
-        const nextBtn = document.querySelector('.next-btn');
-        const prevBtn = document.querySelector('.prev-btn');
-        if (nextBtn) nextBtn.onclick = () => this.nextSong();
-        if (prevBtn) prevBtn.onclick = () => this.prevSong();
+
+        document.querySelector('.next-btn').onclick = () => this.nextSong();
+        document.querySelector('.prev-btn').onclick = () => this.prevSong();
+        document.querySelector('.shuffle-btn').onclick = () => {
+            this.state.isShuffle = !this.state.isShuffle;
+            this.updatePlayerControls();
+        };
+        document.querySelector('.repeat-btn').onclick = () => {
+            const modes = ['none', 'all', 'one'];
+            this.state.repeatMode = modes[(modes.indexOf(this.state.repeatMode) + 1) % modes.length];
+            this.updatePlayerControls();
+        };
 
         document.addEventListener('input', (e) => {
             if (e.target.classList.contains('ambient-slider')) {
-                const id = e.target.dataset.soundId;
-                const audio = this.state.ambientAudios[id];
+                const audio = this.state.ambientAudios[e.target.dataset.id];
                 if (audio) {
                     audio.volume = e.target.value;
                     (audio.volume > 0 && audio.paused) ? audio.play() : (audio.volume == 0 && audio.pause());
                 }
             }
         });
-    },
 
-    renderAmbientControls() {
-        const container = document.getElementById('ambient-sounds-panel');
-        if (!container) return;
-        container.innerHTML = '';
-        this.state.sounds.forEach(sound => {
-            const audio = new Audio(App.utils.resolvePath(sound.filePath));
-            audio.loop = true;
-            audio.volume = 0;
-            this.state.ambientAudios[sound.id] = audio;
-
-            const div = document.createElement('div');
-            div.className = 'ambient-control';
-            div.innerHTML = `
-                <div class="ambient-info" style="color:#fff"><i class="fa-solid ${sound.iconClass || 'fa-music'}"></i> ${sound.name}</div>
-                <input type="range" class="ambient-slider" min="0" max="1" step="0.01" value="0" data-sound-id="${sound.id}">
-            `;
-            container.appendChild(div);
+        document.addEventListener('keydown', (e) => {
+            if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+            if (e.code === 'Space') { e.preventDefault(); playBtn.click(); }
+            if (e.key.toLowerCase() === 'h') document.body.classList.toggle('zen-mode');
         });
-    },
 
-    setupProgressBar() {
-        const audio = this.state.mainAudio;
-        const slider = document.getElementById('progress-slider');
-        const curEl = document.querySelector('.current-time');
-        const durEl = document.querySelector('.duration');
-        if (!slider) return;
-
-        const fmt = (s) => {
-            const m = Math.floor(s / 60), sec = Math.floor(s % 60);
-            return `${m}:${sec < 10 ? '0' : ''}${sec}`;
-        };
-
-        audio.addEventListener('loadedmetadata', () => {
-            if (isFinite(audio.duration)) {
-                slider.max = audio.duration;
-                durEl.innerText = fmt(audio.duration);
-            }
-        });
-        audio.addEventListener('timeupdate', () => {
-            slider.value = audio.currentTime;
-            curEl.innerText = fmt(audio.currentTime);
-        });
-        slider.addEventListener('input', (e) => audio.currentTime = e.target.value);
-    },
-
-    setupVolumeControl() {
-        const slider = document.getElementById('volume-slider');
-        const icon = document.getElementById('volume-icon');
-        if (!slider) return;
-        const updateIcon = (v) => {
-            icon.className = 'fa-solid ' + (v === 0 ? 'fa-volume-mute' : v < 0.5 ? 'fa-volume-low' : 'fa-volume-high');
-        };
-        slider.addEventListener('input', (e) => {
-            this.state.mainAudio.volume = e.target.value;
-            updateIcon(parseFloat(e.target.value));
-        });
-        icon.addEventListener('click', () => {
-            if (this.state.mainAudio.volume > 0) {
-                this.savedVol = this.state.mainAudio.volume;
-                this.state.mainAudio.volume = 0;
-                slider.value = 0;
-            } else {
-                this.state.mainAudio.volume = this.savedVol || 0.5;
-                slider.value = this.state.mainAudio.volume;
-            }
-            updateIcon(this.state.mainAudio.volume);
-        });
-    },
-
-    changeBackground() {
-        const bgs = this.state.backgrounds;
-        if (!bgs || !bgs.length) return;
-
-        // Cập nhật index
-        this.state.currentBgIndex = (this.state.currentBgIndex + 1) % bgs.length;
-
-        // Lấy item
-        const item = bgs[this.state.currentBgIndex];
-        const bgName = (typeof item === 'object') ? item.name : item;
-
-        if (bgName) {
-            const path = App.utils.resolvePath(this.config.backgroundBaseUrl + bgName);
-            this.changeBackgroundDirect(path);
-        }
-    },
-
-    changeBackgroundDirect(path) {
         const bgContainer = document.getElementById('background-container');
-        if (bgContainer) {
-            const img = new Image();
-            img.onload = () => {
-                bgContainer.style.backgroundImage = `url('${path}')`;
-            };
-            img.src = path;
-        }
+        if (bgContainer) bgContainer.onclick = () => document.body.classList.toggle('zen-mode');
     },
 
-    startBackgroundSlideshow() {
-        if (this.state.bgTimerId) clearInterval(this.state.bgTimerId);
-        this.state.bgTimerId = setInterval(() => this.changeBackground(), this.state.bgIntervalTime);
+    formatTime(s) {
+        if (isNaN(s)) return "0:00";
+        return `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
     }
+};
 
-}
 document.addEventListener('DOMContentLoaded', () => App.init());
