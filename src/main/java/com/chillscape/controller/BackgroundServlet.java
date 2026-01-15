@@ -33,7 +33,7 @@ public class BackgroundServlet extends HttpServlet {
         ResourceBundle bundle = ResourceBundle.getBundle("messages");
 
         try {
-            List<Background> backgrounds = backgroundDAO.getAllBackgrounds();
+            List<Background> backgrounds = backgroundDAO.getDefaultBackgrounds();
             String json = gson.toJson(backgrounds);
             resp.getWriter().write(json);
             resp.flushBuffer();

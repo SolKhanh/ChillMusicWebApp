@@ -16,17 +16,58 @@
     <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/vinylrecord.css">
 </head>
 <body>
+
+<!-- Background & Visualizer (Của bạn) -->
 <div id="background-container" class="background-container"
      style="background-image: url('${pageContext.request.contextPath}/assets/img/cover/background.jpg');">
 </div>
-
 <canvas id="visualizer-canvas"></canvas>
-<div id="menu-container" class="menu-container">
-    <i class="fa-solid fa-bars"></i>
+
+<!-- --- NEW: TOP BAR & AUTH (Từ Main) --- -->
+<div class="top-bar">
+    <div id="menu-btn" class="icon-btn">
+        <i class="fa-solid fa-bars"></i>
+    </div>
+    <div id="user-btn" class="icon-btn">
+        <i class="fa-solid fa-user"></i>
+        <span id="login-status-dot" class="status-dot"></span>
+    </div>
 </div>
+
+<!-- --- NEW: POPUPS (Từ Main) --- -->
+<div id="user-popup" class="user-popup">
+    <div id="guest-view">
+        <p>Chào bạn,</p>
+        <button id="btn-open-login" class="auth-btn">Đăng nhập</button>
+        <button id="btn-open-register" class="auth-btn outline">Đăng ký</button>
+    </div>
+    <div id="user-view" style="display: none;">
+        <p>Xin chào, <b id="display-username">User</b></p>
+        <div class="divider" style="margin: 10px 0; border-top: 1px solid #444;"></div>
+        <button id="btn-logout" class="auth-btn outline">Đăng xuất</button>
+    </div>
+</div>
+
+<div id="auth-modal" class="modal-overlay">
+    <div class="modal-content">
+        <span id="btn-close-auth" class="close-modal">&times;</span>
+        <h2 id="auth-title">Đăng Nhập</h2>
+        <form id="auth-form">
+            <input type="text" id="username" placeholder="Tên đăng nhập" required>
+            <input type="password" id="password" placeholder="Mật khẩu" required>
+            <button type="submit" class="submit-btn">Xác nhận</button>
+        </form>
+        <p style="margin-top: 15px; font-size: 0.9em; color: #aaa;">
+            <span id="switch-auth-text">Chưa có tài khoản?</span>
+            <a href="#" id="switch-auth-link">Đăng ký ngay</a>
+        </p>
+    </div>
+</div>
+<!-- ------------------------------------- -->
 
 <div id="overlay" class="overlay"></div>
 
+<!-- SIDEBAR (Merge: Giữ ID cũ nhưng thêm Container mới) -->
 <div id="sidebar" class="sidebar">
     <div class="sidebar-header">
         <h2>Thư viện</h2>
@@ -35,31 +76,47 @@
 
     <div class="sidebar-tabs">
         <button class="tab-btn active" data-tab="backgrounds">Backgrounds</button>
+        <!-- App.js map 'albums' logic vào playlist nên giữ nguyên ID tab của bạn hoặc đổi thành playlists cũng được -->
         <button class="tab-btn" data-tab="albums">Albums</button>
     </div>
 
     <div class="sidebar-content">
         <div id="tab-backgrounds" class="tab-pane active">
-            <div class="shelf-grid" id="bg-shelf">
-                <!-- render -->
+            <!-- Kệ mặc định (ID của bạn) -->
+            <div class="shelf-section">
+                <h3 class="shelf-title">Hệ thống</h3>
+                <div class="shelf-grid shelf-scroll" id="bg-shelf"></div>
             </div>
+
+            <!-- Container cho Collection (Mới từ Main) -->
+            <div id="bg-container-owner"></div>
+            <div id="bg-container-subscriber"></div>
         </div>
 
         <div id="tab-albums" class="tab-pane">
-            <div class="shelf-grid" id="album-shelf">
-                <!-- render -->
+            <!-- Kệ mặc định (ID của bạn) -->
+            <div class="shelf-section">
+                <h3 class="shelf-title">Hệ thống</h3>
+                <div class="shelf-grid shelf-scroll" id="album-shelf"></div>
             </div>
+
+            <!-- Container cho Collection (Mới từ Main) -->
+            <div id="playlist-container-owner"></div>
+            <div id="playlist-container-subscriber"></div>
         </div>
     </div>
 
-    <!-- Input file img  -->
     <input type="file" id="upload-input" style="display: none;" accept="image/*">
 </div>
 
+<!-- MAIN UI (Của bạn) -->
 <div class="main-container">
     <div id="clock" class="clock"></div>
 </div>
+
 <div id="ambient-sounds-panel" class="ambient-panel"></div>
+
+<!-- PLAYER (Của bạn - Giữ Animation Vinyl) -->
 <div class="player-container">
     <div class="song-info">
         <div class="vn-album-wrapper">
@@ -104,10 +161,8 @@
             <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.5">
         </div>
     </div>
-
 </div>
 
-<!-- Truyền đường dẫn Context Path cho JavaScript -->
 <script>
     window.CURRENT_CONTEXT = '${pageContext.request.contextPath}';
 </script>

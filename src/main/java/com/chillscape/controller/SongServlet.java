@@ -33,7 +33,7 @@ public class SongServlet extends HttpServlet {
 
         ResourceBundle bundle = ResourceBundle.getBundle("messages");
         try {
-            List<Song> songs = songDAO.getAllSongs();
+            List<Song> songs = songDAO.getDefaultSongs();
             String json = gson.toJson(songs);
 
             PrintWriter out = resp.getWriter();

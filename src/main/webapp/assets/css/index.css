@@ -1,3 +1,4 @@
+/* --- 1. CORE & USER STYLES (GIỮ NGUYÊN CSS CỦA BẠN) --- */
 :root {
     --background-color: #121212;
     --text-color: #E0E0E0;
@@ -18,31 +19,38 @@ body, html {
     color: var(--text-color);
     overflow: hidden;
 }
+
+/* Zen Mode Transition */
 .player-container,
 .menu-container,
 .sidebar,
 .overlay,
-.ambient-panel {
+.ambient-panel,
+.top-bar { /* Added top-bar to transition */
     transition: opacity 0.8s ease-in-out, visibility 0.8s ease-in-out, transform 0.8s ease-in-out;
 }
+
 body.zen-mode .player-container,
 body.zen-mode .menu-container,
 body.zen-mode .sidebar,
 body.zen-mode .overlay,
-body.zen-mode .ambient-panel {
+body.zen-mode .ambient-panel,
+body.zen-mode .top-bar {
     opacity: 0;
     pointer-events: none;
     transition: opacity 1s ease-in-out;
 }
+
 body.zen-mode .clock {
     transform: scale(1.4);
     transition: transform 1s ease-in-out;
 }
+
 body.zen-mode .main-container {
     padding-top: 300px;
     transition: opacity 1s ease-in-out;
-
 }
+
 .background-container {
     position: fixed;
     top: 0;
@@ -71,41 +79,39 @@ body.zen-mode .main-container {
     font-weight: 700;
     color: white;
     letter-spacing: -2px;
-    /* Hiệu ứng bóng đổ đa lớp*/
     text-shadow: 0 0 30px rgba(0, 0, 0, 0.8),
     0 0 10px rgba(0, 0, 0, 0.5),
     2px 2px 4px rgba(0, 0, 0, 0.3);
     opacity: 0.9;
     transition: transform 0.3s ease;
 }
+
 .clock:hover {
     transform: scale(1.05);
 }
-/* --- PLAYER CONTAINER --- */
+
+/* --- PLAYER CONTAINER (User) --- */
 .player-container {
     position: fixed;
     bottom: 30px;
     left: 50%;
     transform: translateX(-50%);
     width: 90%;
-    max-width: 800px; /* Tăng độ rộng để bố cục thoáng hơn */
+    max-width: 800px;
     background-color: var(--player-bg-color);
     border: 1px solid var(--player-border-color);
     border-radius: 12px;
     padding: 15px 25px;
-
     display: flex;
-    flex-wrap: wrap; /* Cho phép xuống dòng (để progress bar xuống dưới) */
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     z-index: 10;
 }
 
-/* --- 1. VOLUME (BÊN TRÁI) --- */
 .player-options {
     order: 3;
     display: flex;
@@ -152,7 +158,6 @@ body.zen-mode .main-container {
     -webkit-appearance: none;
 }
 
-/* Hover: input nằm sau icon trong HTML -> bung ra bên phải icon -> Hợp lý cho góc trái màn hình */
 .volume-container:hover #volume-slider {
     width: 80px;
     opacity: 1;
@@ -195,15 +200,7 @@ body.zen-mode .main-container {
 .player-controls .play-pause-btn {
     font-size: 28px;
 }
-.player-options {
-    order: 3;
-    display: flex;
-    align-items: start;
-    justify-content: start;
-    gap: 20px;
-    flex: 0.5;
-}
-/* Hiệu ứng nhấn nút (Click Feedback) */
+
 .player-controls button,
 .player-options button,
 .ambient-control i {
@@ -214,18 +211,16 @@ body.zen-mode .main-container {
 
 .player-controls button:active,
 .player-options button:active {
-    transform: scale(0.9); /* Thu nhỏ nhẹ khi nhấn */
+    transform: scale(0.9);
     opacity: 0.7;
 }
 
-/* Trạng thái Kích hoạt (Active State) cho Shuffle và Repeat */
 .shuffle-btn.active,
 .repeat-btn.active {
     color: #ff9800 ;
     text-shadow: 0 0 10px rgba(255, 152, 0, 0.6);
 }
 
-/* Hiệu ứng hiển thị chế độ lặp (Badge số 1) */
 .repeat-btn {
     position: relative;
     display: inline-flex;
@@ -250,11 +245,11 @@ body.zen-mode .main-container {
     border: 1px solid #000;
 }
 
-/* Ambient Panel Feedback */
 .ambient-slider::-webkit-slider-thumb:active {
     transform: scale(1.3);
     background: #ff9800;
 }
+
 .player-options button {
     background: none;
     border: none;
@@ -263,6 +258,7 @@ body.zen-mode .main-container {
     cursor: pointer;
     transition: transform 0.2s ease;
 }
+
 .song-info {
     order: 1;
     display: flex;
@@ -270,7 +266,6 @@ body.zen-mode .main-container {
     justify-content: flex-start;
     gap: 15px;
     flex: 1;
-
     min-width: 0;
 }
 
@@ -279,7 +274,6 @@ body.zen-mode .main-container {
     flex-direction: column;
     align-items: flex-end;
     justify-content: center;
-
     flex: 1;
     min-width: 0;
     overflow: hidden;
@@ -387,7 +381,6 @@ body.zen-mode .main-container {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    z-index: 100;
     min-width: 180px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
@@ -425,53 +418,6 @@ body.zen-mode .main-container {
     margin-top: -5px;
 }
 
-.menu-container {
-    position: fixed;
-    top: 25px;
-    left: 25px;
-    z-index: 100;
-
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    background-color: rgba(30, 30, 30, 0.6);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-
-    color: #E0E0E0;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Kích thước icon bên trong */
-.menu-container i {
-    font-size: 20px;
-    pointer-events: none;
-}
-
-/* --- HIỆU ỨNG HOVER & CLICK --- */
-.menu-container:hover {
-    background-color: rgba(255, 255, 255, 0.15);
-    transform: scale(1.1);
-    border-color: rgba(255, 255, 255, 0.3);
-    color: #ffffff;
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
-}
-
-/* Khi bấm xuống */
-.menu-container:active {
-    transform: scale(0.95);
-    background-color: rgba(255, 255, 255, 0.05);
-}
-
-/* --- OVERLAY --- */
 .overlay {
     position: fixed;
     top: 0;
@@ -490,7 +436,6 @@ body.zen-mode .main-container {
     visibility: visible;
 }
 
-/* --- SIDEBAR TABS --- */
 .sidebar {
     position: fixed;
     top: 0;
@@ -502,17 +447,15 @@ body.zen-mode .main-container {
     border-right: 1px solid rgba(255, 255, 255, 0.1);
     z-index: 999;
     transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-
     display: flex;
     flex-direction: column;
-    box-shadow: 5px 0 25px rgba(0,0,0,0.5);
+    box-shadow: 5px 0 25px rgba(0, 0, 0, 0.5);
 }
 
 .sidebar.active {
     left: 0;
 }
 
-/* --- SIDEBAR HEADER --- */
 .sidebar-header {
     display: flex;
     justify-content: space-between;
@@ -539,7 +482,6 @@ body.zen-mode .main-container {
     transform: rotate(90deg);
 }
 
-/* --- SIDEBAR CONTENT WRAPPER --- */
 .sidebar-content {
     flex: 1;
     overflow-y: auto;
@@ -549,13 +491,16 @@ body.zen-mode .main-container {
 .sidebar-content::-webkit-scrollbar {
     width: 6px;
 }
+
 .sidebar-content::-webkit-scrollbar-track {
     background: transparent;
 }
+
 .sidebar-content::-webkit-scrollbar-thumb {
     background: #444;
     border-radius: 3px;
 }
+
 .sidebar-content::-webkit-scrollbar-thumb:hover {
     background: #666;
 }
@@ -598,29 +543,41 @@ body.zen-mode .main-container {
     display: block;
 }
 
+/* User's Shelf Grid Style */
 .shelf-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, 1fr); /* Giữ layout 3 cột của bạn */
     gap: 15px;
-    padding-bottom: 20px;
 }
 
+/* Fallback & New Scroll Style for Collection (Main) */
+.shelf-scroll {
+    /* Main dùng flex scroll ngang, User dùng grid */
+    /* Kết hợp: Nếu có class shelf-grid thì grid, không thì flex */
+    display: flex;
+    gap: 15px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+}
+.shelf-grid.shelf-scroll {
+    display: grid;
+    overflow-x: visible;
+}
 
 .shelf-item {
-    position: relative;
     aspect-ratio: 1 / 1;
+    position: relative;
     border-radius: 8px;
     overflow: hidden;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
     background: #2a2a2a;
-    border: 1px solid transparent;
+    transition: transform 0.2s;
+    min-width: 80px; /* Cho kiểu scroll ngang */
 }
 
 .shelf-item:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-    border-color: #555;
+    transform: translate(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
 }
 
 .shelf-item img {
@@ -664,4 +621,181 @@ body.zen-mode .main-container {
     z-index: 1;
     pointer-events: none;
     display: block;
+}
+
+/* --- 2. NEW STYLES FROM MAIN (FOR AUTH & UI UPDATE) --- */
+
+/* TOP BAR */
+.top-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 25px;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+    z-index: 100;
+}
+
+.icon-btn {
+    pointer-events: auto;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(30, 30, 30, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    color: #E0E0E0;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.icon-btn i { font-size: 20px; }
+
+.icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    transform: scale(1.1);
+    color: #ffffff;
+}
+
+.status-dot {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 10px;
+    height: 10px;
+    background-color: #1db954;
+    border-radius: 50%;
+    border: 2px solid #222;
+    display: none;
+}
+
+/* USER POPUP */
+.user-popup {
+    position: fixed;
+    top: 80px;
+    right: 25px;
+    width: 200px;
+    background: rgba(30, 30, 30, 0.95);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 15px;
+    color: #fff;
+    transform: scale(0.9);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 99;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+
+.user-popup.active {
+    transform: scale(1);
+    opacity: 1;
+    visibility: visible;
+}
+
+/* AUTH BUTTONS */
+.auth-btn {
+    width: 100%;
+    padding: 8px;
+    margin-top: 10px;
+    border-radius: 20px;
+    border: none;
+    background: #1db954;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.auth-btn.outline {
+    background: transparent;
+    border: 1px solid #555;
+    color: #ccc;
+}
+
+.auth-btn:hover { opacity: 0.9; }
+.auth-btn.outline:hover { border-color: #fff; color: #fff; }
+
+/* AUTH MODAL */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: 0.3s;
+}
+
+.modal-overlay.active { opacity: 1; visibility: visible; }
+
+.modal-content {
+    background: #222;
+    padding: 30px;
+    border-radius: 15px;
+    width: 350px;
+    text-align: center;
+    border: 1px solid #444;
+    position: relative;
+}
+
+.modal-content input {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0;
+    background: #333;
+    border: 1px solid #444;
+    color: #fff;
+    border-radius: 5px;
+}
+
+.submit-btn {
+    width: 100%;
+    padding: 12px;
+    background: #1db954;
+    border: none;
+    border-radius: 25px;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+    font-size: 1rem;
+}
+
+.close-modal {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 24px;
+    cursor: pointer;
+    color: #888;
+}
+
+/* Collection Section Styles */
+.shelf-section {
+    margin-bottom: 25px;
+}
+
+.shelf-title {
+    font-size: 0.95rem;
+    color: #fff;
+    margin-bottom: 10px;
+    font-weight: 600;
+    padding-left: 5px;
+    border-left: 3px solid #1db954;
+    line-height: 1;
 }
