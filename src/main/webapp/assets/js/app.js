@@ -27,7 +27,7 @@ const App = {
 
         // State User
         userBackgrounds: [],
-        userPlaylists: [],
+        userSongs: [],
         collections: []
     },
 
@@ -37,9 +37,7 @@ const App = {
             if (!path || path === 'null') return '';
             if (path.startsWith('http')) return path;
 
-            // Lấy Context Path từ config hoặc biến global
             const ctx = App.config.contextPath || window.CURRENT_CONTEXT || '';
-
             return `${ctx}/${path}`.replace(/\/+/g, '/');
         },
         getElement(id) {
@@ -49,22 +47,14 @@ const App = {
 
     async init() {
         await this.loadData();
-
-        // 1. Khởi tạo Auth
         this.Auth.init();
-
-        // 2. Khởi tạo Sidebar
         this.Sidebar.init();
-
-        // 3. Khởi tạo Player & Môi trường
         this.startClock();
         this.renderAmbientControls();
         this.setupMainPlayer();
         this.handleEvents();
         this.setupProgressBar();
         this.setupVolumeControl();
-
-        // 4. Slide nền
         this.changeBackground();
         this.startBackgroundSlideshow();
     },
@@ -88,11 +78,9 @@ const App = {
             this.state.sounds = sounds || [];
             this.state.backgrounds = bgs || [];
 
-            // Cập nhật UI bài hát đầu tiên nếu có
             if (this.state.songs.length > 0) this.updateSongUI();
         } catch (error) {
             console.error("Lỗi tải dữ liệu (LoadData):", error);
-            // Dữ liệu giả phòng hờ (Fallback) nếu cần
             this.state.songs = [];
         }
     },
@@ -156,7 +144,6 @@ const App = {
             try {
                 const endpoint = App.utils.resolvePath('api/auth/check');
                 const res = await fetch(endpoint);
-
                 const contentType = res.headers.get("content-type");
                 if (res.ok && contentType && contentType.indexOf("application/json") !== -1) {
                     const data = await res.json();
@@ -169,7 +156,6 @@ const App = {
                     this.onLogoutSuccess();
                 }
             } catch (e) {
-                console.error("Auth check failed", e);
                 this.onLogoutSuccess();
             }
         },
@@ -178,7 +164,6 @@ const App = {
             e.preventDefault();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-
             const path = this.mode === 'login' ? 'api/auth/login' : 'api/auth/register';
             const endpoint = App.utils.resolvePath(path);
 
@@ -198,8 +183,7 @@ const App = {
                 try {
                     data = JSON.parse(text);
                 } catch (err) {
-                    console.error("Server Response (Not JSON):", text);
-                    alert("Lỗi Server (HTML Error). Xem console để biết chi tiết.");
+                    alert("Lỗi Server. Xem console.");
                     return;
                 }
 
@@ -214,7 +198,6 @@ const App = {
                     alert("Thông báo: " + (data.message || "Thao tác thất bại"));
                 }
             } catch (e) {
-                console.error(e);
                 alert("Lỗi kết nối server");
             }
         },
@@ -228,16 +211,10 @@ const App = {
         onLoginSuccess(user) {
             this.currentUser = user;
             App.state.currentUser = user;
-
-            const dot = document.getElementById('login-status-dot');
-            const guestView = document.getElementById('guest-view');
-            const userView = document.getElementById('user-view');
-            const nameDisplay = document.getElementById('display-username');
-
-            if (dot) dot.style.display = 'block';
-            if (guestView) guestView.style.display = 'none';
-            if (userView) userView.style.display = 'block';
-            if (nameDisplay) nameDisplay.innerText = user.username;
+            document.getElementById('login-status-dot').style.display = 'block';
+            document.getElementById('guest-view').style.display = 'none';
+            document.getElementById('user-view').style.display = 'block';
+            document.getElementById('display-username').innerText = user.username;
 
             const adminOpt = document.getElementById('opt-admin-all');
             if (adminOpt) adminOpt.style.display = (user.role === 'ADMIN') ? 'block' : 'none';
@@ -249,14 +226,9 @@ const App = {
         onLogoutSuccess() {
             this.currentUser = null;
             App.state.currentUser = null;
-
-            const dot = document.getElementById('login-status-dot');
-            const guestView = document.getElementById('guest-view');
-            const userView = document.getElementById('user-view');
-
-            if (dot) dot.style.display = 'none';
-            if (guestView) guestView.style.display = 'block';
-            if (userView) userView.style.display = 'none';
+            document.getElementById('login-status-dot').style.display = 'none';
+            document.getElementById('guest-view').style.display = 'block';
+            document.getElementById('user-view').style.display = 'none';
 
             App.state.userBackgrounds = [];
             App.state.userPlaylists = [];
@@ -276,8 +248,7 @@ const App = {
             const switchLink = document.getElementById('switch-auth-link');
 
             if (modal) modal.classList.add('active');
-            const popup = document.getElementById('user-popup');
-            if (popup) popup.classList.remove('active');
+            document.getElementById('user-popup').classList.remove('active');
 
             if (mode === 'login') {
                 if (title) title.innerText = 'Đăng Nhập';
@@ -291,15 +262,14 @@ const App = {
         },
 
         closeModal() {
-            const modal = document.getElementById('auth-modal');
-            if (modal) modal.classList.remove('active');
+            document.getElementById('auth-modal').classList.remove('active');
         },
         switchMode() {
             this.showModal(this.mode === 'login' ? 'register' : 'login');
         }
     },
 
-    //SIDEBAR
+    // SIDEBAR
     Sidebar: {
         init() {
             this.setupToggle();
@@ -311,15 +281,13 @@ const App = {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('overlay');
             const toggle = (show) => {
-                if (sidebar) sidebar.classList.toggle('active', show);
-                if (overlay) overlay.classList.toggle('active', show);
+                sidebar.classList.toggle('active', show);
+                overlay.classList.toggle('active', show);
             };
 
             const menuBtn = document.querySelector('.menu-container') || document.getElementById('menu-btn');
             if (menuBtn) menuBtn.onclick = () => toggle(true);
-
-            const closeBtn = document.getElementById('close-sidebar-btn');
-            if (closeBtn) closeBtn.onclick = () => toggle(false);
+            if (document.getElementById('close-sidebar-btn')) document.getElementById('close-sidebar-btn').onclick = () => toggle(false);
             if (overlay) overlay.onclick = () => toggle(false);
         },
 
@@ -337,7 +305,7 @@ const App = {
 
         async loadUserContent() {
             if (!App.Auth.currentUser) {
-                App.state.userPlaylists = [];
+                App.state.userSongs = [];
                 App.state.userBackgrounds = [];
                 App.state.collections = [];
                 this.render();
@@ -355,32 +323,62 @@ const App = {
 
                         App.state.collections = [...rawMyCols, ...rawFollowedCols];
 
-                        let allUserBgs = [];
                         App.state.collections.forEach(col => {
+                            if (col.songs && Array.isArray(col.songs)) {
+                                col.songs = col.songs.map(s => ({
+                                    id: s.id,
+                                    title: s.title,
+                                    artist: s.artist,
+                                    filePath: s.filePath,
+                                    coverImage: s.coverImage || s.cover || App.config.defaultCover
+                                }));
+                            } else {
+                                col.songs = [];
+                            }
+
                             if (col.backgrounds && Array.isArray(col.backgrounds)) {
-                                allUserBgs = [...allUserBgs, ...col.backgrounds];
+                                col.backgrounds = col.backgrounds.map(b => ({
+                                    id: b.id,
+                                    name: b.name,
+                                    isAnimated: b.isAnimated
+                                }));
+                            } else {
+                                col.backgrounds = [];
                             }
                         });
 
-                        App.state.userBackgrounds = allUserBgs;
+                        // let allUserBgs = [];
+                        // App.state.collections.forEach(col => {
+                        //     if (col.backgrounds && Array.isArray(col.backgrounds)) {
+                        //         allUserBgs = [...allUserBgs, ...col.backgrounds];
+                        //     }
+                        // });
+                        // App.state.userBackgrounds = allUserBgs;
+                        //
+                        // let allUserSongs = [];
+                        // App.state.collections.forEach(col => {
+                        //     if (col.songs && Array.isArray(col.songs)) {
+                        //         const mappedSongs = col.songs.map(s => ({
+                        //             id: s.id,
+                        //             title: s.title,
+                        //             artist: s.artist,
+                        //             filePath: s.filePath,
+                        //             coverImage: s.coverImage || s.cover || App.config.defaultCover
+                        //         }));
+                        //         allUserSongs.push(...mappedSongs);
+                        //     }
+                        // });
 
-                        const mapToPlaylistUI = (col) => ({
-                            id: col.id,
-                            title: col.name,
-                            artist: col.type === 'OWNER' ? 'My Collection' : 'Followed',
-                            cover: (col.songs && col.songs.length > 0 && col.songs[0].cover)
-                                ? col.songs[0].cover
-                                : 'assets/img/covers/cover.jpg',
-                            shareCode: col.shareCode,
-                            type: col.type,
-                            songs: col.songs || []
-                        });
+                        // const uniqueSongs = [];
+                        // const seenIds = new Set();
+                        // allUserSongs.forEach(song => {
+                        //     if (!seenIds.has(song.id)) {
+                        //         seenIds.add(song.id);
+                        //         uniqueSongs.push(song);
+                        //     }
+                        // });
 
-                        const myColsUI = rawMyCols.map(mapToPlaylistUI);
-                        const followedColsUI = rawFollowedCols.map(mapToPlaylistUI);
-
-                        App.state.userPlaylists = [...myColsUI, ...followedColsUI];
-
+                        // App.state.userSongs = uniqueSongs;
                         this.render();
                     }
                 }
@@ -391,17 +389,73 @@ const App = {
 
         render() {
             this.renderShelf('bg-shelf-default', App.state.backgrounds, 'background');
-            this.renderShelf('playlist-shelf-default', this.getUniquePlaylists(App.state.songs), 'playlist');
-            this.renderShelf('bg-shelf-user', App.state.userBackgrounds || [], 'background', true);
-            this.renderShelf('playlist-shelf-user', App.state.userPlaylists || [], 'playlist', true);
+            this.renderShelf('playlist-shelf-default', App.state.songs, 'song');
+
+            const myCols = App.state.collections.filter(c => c.type === 'OWNER');
+            const followCols = App.state.collections.filter(c => c.type === 'SUBSCRIBER');
+
+            this.renderCollectionGroup('playlist-container-owner', myCols, 'song');
+            this.renderCollectionGroup('playlist-container-subscriber', followCols, 'song');
+
+            this.renderCollectionGroup('bg-container-owner', myCols, 'background');
+            this.renderCollectionGroup('bg-container-subscriber', followCols, 'background');
         },
 
-        renderShelf(containerId, dataList, type, isUserShelf = false) {
+        renderCollectionGroup(containerId, collections, itemType) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = '';
+
+            const validCollections = collections;
+
+            if (validCollections.length === 0 && !containerId.includes('owner')) {
+                return;
+            }
+
+            const groupHeader = document.createElement('h4');
+            groupHeader.style.cssText = "padding: 0 15px; margin-bottom: 10px; opacity: 0.8; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;";
+            groupHeader.innerText = containerId.includes('owner') ? "Của tôi" : "Đã theo dõi";
+            container.appendChild(groupHeader);
+
+            validCollections.forEach(col => {
+                const dataList = (itemType === 'background') ? (col.backgrounds || []) : (col.songs || []);
+
+                if (col.type !== 'OWNER' && dataList.length === 0) return;
+
+                const sectionDiv = document.createElement('div');
+                sectionDiv.className = 'shelf-section';
+
+                const title = document.createElement('h3');
+                title.className = 'shelf-title';
+                title.innerHTML = `${col.name} <span style="font-size:0.7em; opacity:0.6; font-weight: normal; margin-left: 5px;">(${dataList.length})</span>`;
+
+                const shelfDiv = document.createElement('div');
+                shelfDiv.className = 'shelf-scroll';
+
+                const uniqueShelfId = `shelf-${itemType}-col-${col.id}`;
+                shelfDiv.id = uniqueShelfId;
+
+                sectionDiv.appendChild(title);
+                sectionDiv.appendChild(shelfDiv);
+                container.appendChild(sectionDiv);
+
+                const isOwner = (col.type === 'OWNER');
+                this.renderShelf(uniqueShelfId, dataList, itemType, isOwner, col.id);
+            });
+        },
+
+        renderShelf(containerId, dataList, type, isUserShelf = false, collectionId = null) {
             const container = document.getElementById(containerId);
             if (!container) return;
 
             container.innerHTML = '';
-            if (!dataList) return;
+
+            // Nút Add
+            if (isUserShelf) {
+                container.appendChild(this.createAddButton(type, collectionId));
+            }
+
+            if (!dataList || dataList.length === 0) return;
 
             const fragment = document.createDocumentFragment();
 
@@ -409,50 +463,55 @@ const App = {
                 const div = document.createElement('div');
                 div.className = 'shelf-item';
 
+                let imgSrc = '';
+                let title = '';
+
                 if (type === 'background') {
-                    const src = App.utils.resolvePath(App.config.backgroundBaseUrl + (item.name || item));
-                    div.innerHTML = `<img src="${src}" loading="lazy" alt="bg">`;
-                    div.onclick = () => {
-                        if (isUserShelf) App.changeBackgroundDirect(src);
-                        else {
-                            App.state.currentBgIndex = index - 1;
-                            App.changeBackground();
-                            App.startBackgroundSlideshow();
-                        }
-                    };
-                } else if (type === 'playlist') {
-                    const src = App.utils.resolvePath(item.coverImage || item.cover);
-                    div.innerHTML = `<img src="${src}" loading="lazy" alt="playlist">`;
-                    div.onclick = () => {
-                        if (isUserShelf) {
-                            if (item.songs && item.songs.length > 0) {
-                                App.state.songs = item.songs;
-                                App.loadSong(0);
-                                console.log("Đang chơi collection:", item.title);
-                            } else {
-                                alert("Bộ sưu tập này chưa có bài hát nào!");
-                            }
-                        } else {
-                            App.loadSong(item.originalIndex);
-                        }
-                    };
+                    const bgName = item.name || item;
+                    imgSrc = App.utils.resolvePath(App.config.backgroundBaseUrl + bgName);
+                    title = "Bg " + (index + 1);
+                } else if (type === 'song') {
+                    const cover = item.coverImage || item.cover || App.config.defaultCover;
+                    imgSrc = App.utils.resolvePath(cover);
+                    title = item.title;
                 }
+
+                div.innerHTML = `<img src="${imgSrc}" loading="lazy" alt="${title}">`;
+
+                // --- XỬ LÝ CLICK ---
+                div.onclick = () => {
+                    if (type === 'background') {
+                        App.state.backgrounds = dataList;
+
+                        const newIndex = App.state.backgrounds.indexOf(item);
+
+                        App.state.currentBgIndex = newIndex - 1;
+                        App.changeBackground();
+                        App.startBackgroundSlideshow();
+
+                    } else if (type === 'song') {
+                        App.state.songs = dataList;
+
+                        let newIndex = App.state.songs.findIndex(s => s.id === item.id);
+                        if (newIndex === -1) newIndex = index;
+
+                        if (newIndex !== -1) {
+                            App.loadSong(newIndex);
+                        }
+                    }
+                };
 
                 fragment.appendChild(div);
             });
 
-            if (isUserShelf) {
-                const addBtn = this.createAddButton(type);
-                fragment.appendChild(addBtn);
-            }
             container.appendChild(fragment);
         },
 
-        createAddButton(type) {
+        createAddButton(type, collectionId) {
             const div = document.createElement('div');
             div.className = 'shelf-item add-new';
             div.innerHTML = `<i class="fa-solid fa-plus"></i>`;
-            div.onclick = () => this.handleUploadClick(type, null);
+            div.onclick = () => this.handleUploadClick(type, collectionId);
             return div;
         },
 
@@ -460,7 +519,6 @@ const App = {
             const unique = [];
             const seen = new Set();
             songs.forEach((song, idx) => {
-
                 const key = song.album || song.title;
                 if (!seen.has(key)) {
                     seen.add(key);
@@ -475,39 +533,23 @@ const App = {
                 App.Auth.showModal('login');
                 return;
             }
-
             if (!collectionId) {
                 const myCollections = App.state.collections.filter(c => c.type === 'OWNER');
-
                 if (myCollections.length === 0) {
-                    alert("Bạn chưa có Bộ sưu tập nào. Vui lòng tạo Collection trước khi upload.");
+                    alert("Bạn chưa có Bộ sưu tập nào.");
                     return;
                 }
                 if (myCollections.length === 1) {
                     collectionId = myCollections[0].id;
                 } else {
-                    let msg = "Nhập ID Bộ sưu tập bạn muốn upload vào:\n";
-                    myCollections.forEach(c => {
-                        msg += `[ID: ${c.id}] - ${c.name}\n`;
-                    });
-
+                    let msg = "Nhập ID Bộ sưu tập:\n" + myCollections.map(c => `[${c.id}] ${c.name}`).join('\n');
                     const input = prompt(msg);
                     if (!input) return;
-
-                    const selectedId = parseInt(input);
-                    const exists = myCollections.some(c => c.id === selectedId);
-
-                    if (!exists) {
-                        alert("ID không hợp lệ hoặc bạn không sở hữu bộ sưu tập này!");
-                        return;
-                    }
-                    collectionId = selectedId;
+                    collectionId = parseInt(input);
                 }
             }
 
             const fileInput = document.getElementById('upload-input');
-            if (!fileInput) return;
-
             fileInput.value = '';
             fileInput.click();
 
@@ -520,81 +562,57 @@ const App = {
                 formData.append('collectionId', collectionId);
 
                 let endpointPath = '';
-                if (type === 'background') {
-                    endpointPath = 'api/upload/background';
-                } else if (type === 'song') {
+                if (type === 'background') endpointPath = 'api/upload/background';
+                else if (type === 'song') {
                     const defaultTitle = file.name.replace(/\.[^/.]+$/, "");
-                    const title = prompt("Nhập tên bài hát:", defaultTitle) || defaultTitle;
-                    const artist = prompt("Nhập tên nghệ sĩ:", "Unknown") || "Unknown";
-
+                    const title = prompt("Tên bài hát:", defaultTitle) || defaultTitle;
+                    const artist = prompt("Tên nghệ sĩ:", "Unknown") || "Unknown";
                     formData.append('title', title);
                     formData.append('artist', artist);
-
                     endpointPath = 'api/upload/song';
-                } else {
-                    alert("Loại upload không hỗ trợ");
-                    return;
                 }
 
                 try {
-                    const endpoint = App.utils.resolvePath(endpointPath);
-                    const response = await fetch(endpoint, {
-                        method: 'POST',
-                        body: formData
-                    });
+                    const res = await fetch(App.utils.resolvePath(endpointPath), {method: 'POST', body: formData});
+                    const data = await res.json();
 
-                    const data = await response.json();
-
-                    if (response.ok && data.status === 'success') {
-
-                        const targetCollection = App.state.collections.find(c => c.id === collectionId);
+                    if (res.ok && data.status === 'success') {
+                        const targetCol = App.state.collections.find(c => c.id === collectionId);
 
                         if (type === 'background') {
-                            const newBg = {
-                                id: data.id,
-                                name: data.fileName,
-                                isAnimated: false
-                            };
-
-                            if (!targetCollection.backgrounds) targetCollection.backgrounds = [];
-                            targetCollection.backgrounds.push(newBg);
-
+                            const newBg = {id: data.id, name: data.fileName};
+                            if (!targetCol.backgrounds) targetCol.backgrounds = [];
+                            targetCol.backgrounds.push(newBg);
                             App.state.userBackgrounds.push(newBg);
-
-                            alert("Upload thành công!");
+                            alert("Upload ảnh thành công!");
                         } else if (type === 'song') {
                             const newSong = {
                                 id: data.id,
-                                title: title,
-                                artist: artist,
+                                title: data.title || "No Title",
+                                artist: data.artist || "Unknown",
                                 filePath: data.filePath,
                                 cover: 'assets/img/covers/cover.jpg'
                             };
-
-                            if (!targetCollection.songs) targetCollection.songs = [];
-                            targetCollection.songs.push(newSong);
-
-                            const uiPlaylist = App.state.userPlaylists.find(a => a.id === collectionId);
-                            if (uiPlaylist) {
-                                if (!uiPlaylist.songs) uiPlaylist.songs = [];
-                                uiPlaylist.songs.push(newSong);
+                            if (!targetCol.songs) targetCol.songs = [];
+                            targetCol.songs.push(newSong);
+                            const uiPl = App.state.userPlaylists.find(a => a.id === collectionId);
+                            if (uiPl) {
+                                if (!uiPl.songs) uiPl.songs = [];
+                                uiPl.songs.push(newSong);
                             }
-
                             alert("Upload nhạc thành công!");
                         }
-
                         this.render();
                     } else {
-                        alert("Upload thất bại: " + (data.message || 'Lỗi server'));
+                        alert("Lỗi: " + data.message);
                     }
-                } catch (error) {
-                    console.error(error);
-                    alert("Có lỗi xảy ra khi kết nối server.");
+                } catch (err) {
+                    alert("Lỗi kết nối.");
                 }
             };
-
         },
     },
+
     // PLAYER & LOGIC KHÁC
     startClock() {
         const update = () => {
@@ -616,6 +634,8 @@ const App = {
     },
 
     loadSong(index) {
+        if (index >= this.state.songs.length) index = 0;
+
         this.state.currentSongIndex = index;
         const song = this.state.songs[index];
         if (!song) return;
@@ -642,14 +662,18 @@ const App = {
         if (artistEl) artistEl.innerText = song.artist;
 
         const rawCover = song.coverImage || song.cover;
+
         const coverSrc = (!rawCover || rawCover === 'null')
             ? App.utils.resolvePath(this.config.defaultCover)
             : App.utils.resolvePath(rawCover);
 
         const coverEl = document.querySelector('.vn-cover img');
         const labelEl = document.querySelector('.vn-print img');
+        const bgBlur = document.querySelector('.background-blur');
+
         if (coverEl) coverEl.src = coverSrc;
         if (labelEl) labelEl.src = coverSrc;
+        if (bgBlur) bgBlur.src = coverSrc;
     },
 
     nextSong() {
@@ -763,11 +787,19 @@ const App = {
 
     changeBackground() {
         const bgs = this.state.backgrounds;
-        if (!bgs.length) return;
+        if (!bgs || !bgs.length) return;
 
+        // Cập nhật index
         this.state.currentBgIndex = (this.state.currentBgIndex + 1) % bgs.length;
-        const path = App.utils.resolvePath(this.config.backgroundBaseUrl + bgs[this.state.currentBgIndex].name);
-        this.changeBackgroundDirect(path);
+
+        // Lấy item
+        const item = bgs[this.state.currentBgIndex];
+        const bgName = (typeof item === 'object') ? item.name : item;
+
+        if (bgName) {
+            const path = App.utils.resolvePath(this.config.backgroundBaseUrl + bgName);
+            this.changeBackgroundDirect(path);
+        }
     },
 
     changeBackgroundDirect(path) {

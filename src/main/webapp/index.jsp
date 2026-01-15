@@ -84,31 +84,30 @@
         <div id="tab-backgrounds" class="tab-pane active">
 
             <div class="shelf-section">
-                <h3 class="shelf-title">Có sẵn: </h3>
-                <div class="shelf-scroll" id="bg-shelf-default">
-                </div>
+                <h3 class="shelf-title">Có sẵn</h3>
+                <div class="shelf-scroll" id="bg-shelf-default"></div>
             </div>
 
-            <div class="shelf-section">
-                <h3 class="shelf-title">Của bạn</h3>
-                <div class="shelf-scroll" id="bg-shelf-user">
-                </div>
-            </div>
+            <hr style="border-color: rgba(255,255,255,0.1); margin: 20px 0;">
+
+            <div id="bg-container-owner"></div>
+
+            <div id="bg-container-subscriber"></div>
 
         </div>
 
         <div id="tab-playlists" class="tab-pane">
 
             <div class="shelf-section">
-                <h3 class="shelf-title">Playlist gợi ý</h3>
+                <h3 class="shelf-title">Gợi ý từ hệ thống</h3>
                 <div class="shelf-scroll" id="playlist-shelf-default"></div>
             </div>
 
-            <div class="shelf-section">
-                <h3 class="shelf-title">Playlist của bạn</h3>
-                <div class="shelf-scroll" id="playlist-shelf-user">
-                </div>
-            </div>
+            <hr style="border-color: rgba(255,255,255,0.1); margin: 20px 0;">
+
+            <div id="playlist-container-owner"></div>
+
+            <div id="playlist-container-subscriber"></div>
 
         </div>
     </div>
